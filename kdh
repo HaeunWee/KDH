@@ -1,0 +1,47 @@
+library(fst)             ## For Fst binary format
+library(data.table)
+library(lubridate)
+setwd("/home/whe")
+
+jk <- read_fst("jk.fst", as.data.table = T)
+t12 <- read_fst("t1_120.fst", as.data.table = T)
+t13 <- read_fst("t1_130.fst", as.data.table = T)
+t14 <- read_fst("t1_140.fst", as.data.table = T)
+t16 <- read_fst("t1_160.fst", as.data.table = T)
+t16.hp<-read_fst("t16.hp.fst",as.data.table=T)
+AKI=list("N17")
+o1=list("O7020","O9991")
+o2=list("O7032","O7052")
+CKD=list("N183","N184","N185")
+ESRD=list("N185")
+code.bm<-c("324000BIS","365900BIS","366000BIS","321400BIS","324800BIS","325900BIS",
+           "326000BIS","352400BIS","321600BIS","321800BIS","463700BIS","463900BIS",
+           "464000BIS","349700BIS","349900BIS","423400BIS","349800BIS","350000BIS",
+           "423200BIS","350200BIS","350300BIS","423500BIS","366100BIS","449000BIS",
+           "449800BIS","494900BIS","513500BIS","366200BIS","449100BIS","449900BIS",
+           "464700BIS","495000BIS","366300BIS","449200BIS","450000BIS","464800BIS",
+           "431100BIS","431200BIS","431300BIS","509600BIS","509700BIS","509800BIS",
+           "510700BIS","510800BIS","511000BIS","665700BIS","665800BIS","665900BIS")
+#사용해야할 데이터 불러오기
+t12.1.hp<-t12[,.(PERSON_ID,KEY_SEQ,RECU_FR_DT,MAIN_SICK,SUB_SICK)]
+
+t12.1.hp$MAIN_SICK[t12.1.hp$MAIN_SICK=="%"]<-0
+t12.1.hp$SUB_SICK[t12.1.hp$SUB_SICK=="\\"]<-0
+t12.1.hp$MAIN_SICK[t12.1.hp$MAIN_SICK=="]"]<-0
+#t12에 MAIN_SICK에 병명이 %, \\, ]인 사람들 제거
+
+t12.1.hp<-t12.1.hp[order(MAIN_SICK)]
+t12.1.hp$MAIN_SICK[901:905]<-0
+t12.1.hp<-t12.1.hp[order(SUB_SICK)]
+t12.1.hp$SUB_SICK[38406663:38406666]<-0
+#MAIN_SICK & SUB_SICK 에 특수문자 모두 제거
+
+t12.aki.hp<-t12.1.hp[substr(SUB_SICK,1,3)%in% AKI|substr(MAIN_SICK,1,3)%in%AKI]
+# 주상병이 N17* or 부상병이 N17인 것들만 모아서 t12.aki.hp로
+t12.aki.hp[,AKI:=1]
+# AKI라는 열을 만들어서 입원치료를 요하는 AKI 에 1로 표시
+t13.1.hp<-t13[,.(KEY_SEQ,RECU_FR_DT,DIV_CD,DD_MQTY_EXEC_FREQ,MDCN_EXEC_FREQ,DD_MQTY_FREQ)]
+#t13에서 필요한것만 추출
+t13.1.hp[,RECU_FR_DT:=ymd(RECU_FR_DT)]
+#날짜형으로 변환
+
