@@ -1,7 +1,6 @@
 library(fst)             ## For Fst binary format
 library(data.table)
 library(lubridate)
-setwd("/home/whe")
 
 jk <- read_fst("jk.fst", as.data.table = T)
 t12 <- read_fst("t1_120.fst", as.data.table = T)
