@@ -1,7 +1,7 @@
 library(fst)             ## For Fst binary format
 library(data.table)
 library(lubridate)
-
+library(stringr)         ## For str_sub: replace substr
 jk <- read_fst("jk.fst", as.data.table = T)
 t12 <- read_fst("t1_120.fst", as.data.table = T)
 t13 <- read_fst("t1_130.fst", as.data.table = T)
@@ -11,7 +11,8 @@ t16.hp<-read_fst("t16.hp.fst",as.data.table=T)
 AKI=list("N17")
 o1=list("O7020","O9991")
 o2=list("O7032","O7052")
-CKD=list("N183","N184","N185")
+ADVCKD=list("N183","N184","N185")
+CKD=list("N18","N19")
 ESRD=list("N185")
 code.bm<-c("324000BIS","365900BIS","366000BIS","321400BIS","324800BIS","325900BIS",
            "326000BIS","352400BIS","321600BIS","321800BIS","463700BIS","463900BIS",
@@ -22,25 +23,161 @@ code.bm<-c("324000BIS","365900BIS","366000BIS","321400BIS","324800BIS","325900BI
            "431100BIS","431200BIS","431300BIS","509600BIS","509700BIS","509800BIS",
            "510700BIS","510800BIS","511000BIS","665700BIS","665800BIS","665900BIS")
 #사용해야할 데이터 불러오기
-t12.1.hp<-t12[,.(PERSON_ID,KEY_SEQ,RECU_FR_DT,MAIN_SICK,SUB_SICK)]
+#options("scipen"=20)
+#t12[,.SD[.N],keyby="KEY_SEQ"]
+#t12perkey<-t12[,.(PERSON_ID,KEY_SEQ)]
+#pr<-merge(x=t13,y=t12perkey,by="KEY_SEQ",all.x=TRUE)
+################## t13에 PERSON_ID 추가하기
+################## t12는 PERSON_ID와 KEY_SEQ가 1:1대응. 
+################## t13은 일대일 대응이 아니지만 KEY_SEQ를 하나만 남겼을 때 총 KEY_SEQ 갯수가 t12보다 적고, t12의 시작 KEY_SEQ와 종료 KEY_SEQ가 일치함.
+################## 즉 t12가 t13의 모든것들을 커버 가능. but t12가 전체 표본인 것 같은데 t13에 없는 표본이 AKI 등의 질병을 갖고있었을 경우가 마음에 걸림. 
+t12.perkey<-t12[,.(PERSON_ID,KEY_SEQ)]
+#t12에서 PERSON_ID 와 KEY_SEQ 추출
+##########################################
+# 바로아래거는 돌리기 전에 무조건 세이브 #
+##########################################
+# t13<-merge(t13,t12.perkey,by="KEY_SEQ")
+# t13에 PERSON_ID 추가 --- 하면 뻗음
 
-t12.1.hp$MAIN_SICK[t12.1.hp$MAIN_SICK=="%"]<-0
-t12.1.hp$SUB_SICK[t12.1.hp$SUB_SICK=="\\"]<-0
-t12.1.hp$MAIN_SICK[t12.1.hp$MAIN_SICK=="]"]<-0
-#t12에 MAIN_SICK에 병명이 %, \\, ]인 사람들 제거
-
-t12.1.hp<-t12.1.hp[order(MAIN_SICK)]
-t12.1.hp$MAIN_SICK[901:905]<-0
-t12.1.hp<-t12.1.hp[order(SUB_SICK)]
-t12.1.hp$SUB_SICK[38406663:38406666]<-0
-#MAIN_SICK & SUB_SICK 에 특수문자 모두 제거
-
-t12.aki.hp<-t12.1.hp[substr(SUB_SICK,1,3)%in% AKI|substr(MAIN_SICK,1,3)%in%AKI]
-# 주상병이 N17* or 부상병이 N17인 것들만 모아서 t12.aki.hp로
+################### t12 정리
+t12.1.hp <- t12[,.(PERSON_ID,KEY_SEQ,RECU_FR_DT,MAIN_SICK,SUB_SICK)]
+t12.aki.hp <- t12.1.hp[str_sub(SUB_SICK,1,3) %in% AKI|str_sub(MAIN_SICK,1,3) %in% AKI]
+#(이전)t12.aki.hp<-t12.1.hp[str_sub(SUB_SICK,1,3)%in% AKI|str_sub(MAIN_SICK,1,3)%in%AKI]
 t12.aki.hp[,AKI:=1]
-# AKI라는 열을 만들어서 입원치료를 요하는 AKI 에 1로 표시
-t13.1.hp<-t13[,.(KEY_SEQ,RECU_FR_DT,DIV_CD,DD_MQTY_EXEC_FREQ,MDCN_EXEC_FREQ,DD_MQTY_FREQ)]
-#t13에서 필요한것만 추출
-t13.1.hp[,RECU_FR_DT:=ymd(RECU_FR_DT)]
-#날짜형으로 변환
+#t12 에서 필요한것만 가져와서 입원치료를 요하는 AKI에 1표시
+t12.advckd.hp<-t12.1.hp[str_sub(SUB_SICK,1,4)%in% ADVCKD|str_sub(MAIN_SICK,1,4)%in%ADVCKD]
+#t12에서 ADVCKD 조작적 정의를 만족하는 환자 추출 
+t12.ckd.hp<-t12.1.hp[str_sub(SUB_SICK,1,3)%in% CKD|str_sub(MAIN_SICK,1,3)%in%CKD]
+#t12에서 CKD 상병코드가 주상병 or 부상병에서 발견된 환자 추출
+t12.esrd.hp<-t12.1.hp[str_sub(SUB_SICK,1,4)%in% ESRD|str_sub(MAIN_SICK,1,4)%in%ESRD]
+#t12에서 ESRD 상병코드가 주상병 or 부상벙에서 발견된 환자 추출
 
+################### t13정리
+t13.1.hp<-t13[,.(KEY_SEQ,RECU_FR_DT,DIV_CD,MDCN_EXEC_FREQ)]
+#t13에서 필요한것만 가져오기
+##### t13에 PERSON_ID 묶을 도구 필요.
+t13.o1.hp<-t13.1.hp[str_sub(DIV_CD,1,5)%in%o1]
+t13.o2.hp<-t13.1.hp[str_sub(DIV_CD,1,5)%in%o2]
+#O7020 or O9991 행위코드인 사람들은 t13.o1.hp 에 모으고 O7032 or O7052 행위코드인 사람들은 t13.o2.hp에 모으기.
+t13.o2.hp[,o2:=1]
+t13.o1.hp[,o1:=1]
+#o1 임을 표시 o2 임을 표시
+t13.o1.hp<-merge(t12.perkey[KEY_SEQ %in% t13.o1.hp$KEY_SEQ],t13.o1.hp,by="KEY_SEQ")
+t13.o2.hp<-merge(t12.perkey[KEY_SEQ %in% t13.o2.hp$KEY_SEQ],t13.o2.hp,by="KEY_SEQ")
+# t13.o1.hp와 t13.o2.hp에 KEY_SEQ 추가
+t13.o2.hp[,RECU_FR_DT:=ymd(RECU_FR_DT)]
+t13.o1.hp[,RECU_FR_DT:=ymd(RECU_FR_DT)]
+t13.o1.hp<-t13.o1.hp[order(PERSON_ID,RECU_FR_DT,MDCN_EXEC_FREQ)]
+t13.o2.hp<-t13.o2.hp[order(PERSON_ID,RECU_FR_DT)]
+#날짜표기 변경 후 순서를 ID & 진단날짜 순으로 정렬
+t13.o1.hp<-t13.o1.hp[,.(PERSON_ID,KEY_SEQ,RECU_FR_DT,DIV_CD,o1,period.o1=MDCN_EXEC_FREQ[.N]+RECU_FR_DT[.N]-RECU_FR_DT[1]),keyby="PERSON_ID"][,.SD[1],keyby="PERSON_ID"]
+#period.o1 로 O7020 or O9991의 행위코드 처방 일수 알수있음. 
+
+#####################
+t12.aki.hp[,RECU_FR_DT:=ymd(RECU_FR_DT)]
+t12.aki.hp<-t12.aki.hp[order(PERSON_ID,RECU_FR_DT)][,.SD[1],keyby=PERSON_ID]
+t12.aki.hp<-t12.aki.hp[,.(PERSON_ID,AKI,AKIDATE=RECU_FR_DT,MAIN_SICK,SUB_SICK)]
+#t12.aki.hp에 PERSON_ID, AKI 처음 진단여부, AKI 처음 진단받은 날짜, 주상병, 부상병 표기
+t13.o2.hp<-t13.o2.hp[order(PERSON_ID,RECU_FR_DT)][,.SD[1],keyby="PERSON_ID"]
+#O7032 O7052 행위코드인 사람들PERSON_ID와 첫 진단일 표시.
+t13.o1.hp<-t13.o1.hp[,.(PERSON_ID,o1,period.o1,o1DATE=RECU_FR_DT)]
+t13.o2.hp<-t13.o2.hp[,.(PERSON_ID,o2=1,o2DATE=RECU_FR_DT)]
+#각각 첫 진단일을 o1DATE와 o2DATE로 표기 (o1DATE는 O7020 or O9991의 첫 처방일, o2DATE는 O7032 or O7052의 첫 처방일)
+AKI<-merge(t13.o1.hp,t13.o2.hp,keyby="PERSON_ID",all=T)
+AKI<-merge(AKI,t12.aki.hp,keyby="PERSON_ID",all=T)
+#AKI 에 합치기
+
+#t16[,RECU_FR_DT:=ymd(RECU_FR_DT)]
+#위에거 뻗음.
+code.ppi <-  c("367201ACH", "367201ATB", "367201ATD", "367202ACH", "367202ATB", "367202ATD", "498001ACH", "498002ACH", 
+               "509901ACH", "509902ACH", "670700ATB", "204401ACE", "204401ATE", "204402ATE", "204403ATE", "664500ATB",
+               "640200ATB", "664500ATB", "208801ATE", "208802ATE", "656701ATE", "519201ATE", "519202ATE", "656701ATE",
+               "519203ATE", "222201ATE", "222202ATE", "222203ATE", "181301ACE", "181301ATD", "181302ACE", "181302ATD", 
+               "181302ATE", "621901ACR", "621902ACR", "505501ATE")
+t16ppi<-t16[GNL_NM_CD %in% code.ppi]
+t16ppi<-merge(t12.perkey[KEY_SEQ %in% t16ppi$KEY_SEQ],t16ppi,by="KEY_SEQ")
+t16ppi[,STND_Y:=as.integer(str_sub(RECU_FR_DT,1,4))]
+t16ppi[,RECU_FR_DT:=ymd(RECU_FR_DT)]
+freq.ppi <- merge(jk[, 1:5], t16ppi, by = c("PERSON_ID","STND_Y"))[order(PERSON_ID,RECU_FR_DT)][, .(start.ppi = RECU_FR_DT[1], period.ppi = MDCN_EXEC_FREQ[.N] + RECU_FR_DT[.N] - RECU_FR_DT[1], dsum.ppi = sum(MDCN_EXEC_FREQ)), keyby = "PERSON_ID"][, freq.ppi := dsum.ppi/as.integer(period.ppi)][,-c("dsum.ppi")]
+# 제균치료 반영 안됨. 모든 사람들 가지고 한것. 기존 out.hp 만드는 과정과 동일 + order(PERSON_ID,RECU_FR_DT) 추가
+#freq.ppi[,STND_Y:=as.integer(str_sub(start.ppi,1,4))]
+out.hp<-merge(jk[order(PERSON_ID,STND_Y)][,.SD[1],key="PERSON_ID"][,1:5],freq.ppi,by=c("PERSON_ID"),all=T)
+#jk 에서 첫 기준년도만 남기고 freq.ppi 와 합치기.
+####### 기준년도에 따라 달라질듯.
+out.hp$period.ppi[is.na(out.hp$period.ppi)] <- 0
+#NA 제거
+
+
+####################################
+   #위에서 만든 out.hp 사용#
+####################################
+AKI<-merge(AKI,out.hp,keyby="PERSON_ID",all=T)
+AKI$o1[is.na(AKI$o1)]<-0
+AKI$o2[is.na(AKI$o2)]<-0
+AKI$AKI[is.na(AKI$AKI)]<-0
+# AKI[date+(숫자)<AKIDATE] 를 통해 PPI 처방 (숫자)일 후 AKI 상병코드 발생 환자 추출 가능
+# 추출 후 AKI가 1이면 -> 입원치료를 요하는 AKI
+# AKI * o1 이 1이면-> 투석치료를 요하는 AKI
+# AKI * o2 이 1이면-> 2일 이상의 CRRT 치료를 요하는 AKI
+t12.ckd.hp[,RECU_FR_DT:=ymd(RECU_FR_DT)]
+t12.advckd.hp[,RECU_FR_DT:=ymd(RECU_FR_DT)]
+t12.ckd.hp<-t12.ckd.hp[,.(PERSON_ID,CKD=1,CKDDATE=RECU_FR_DT,MAIN_SICK,SUB_SICK)]
+t12.advckd.hp<-t12.advckd.hp[,.(PERSON_ID,ADVCKD=1,ADVCKDDATE=RECU_FR_DT,MAIN_SICK,SUB_SICK)]
+t12.ckd.hp<-t12.ckd.hp[order(PERSON_ID,CKDDATE)][,.SD[1],keyby="PERSON_ID"]
+t12.advckd.hp<-t12.advckd.hp[order(PERSON_ID,ADVCKDDATE)][,.SD[1],keyby="PERSON_ID"]
+#CKD와 ADVCKD 첫 진단 날짜 추출 & ADVCKD 와  CKD 있는 여부 체크하는 열 추가
+CKD<-merge(t12.ckd.hp,out.hp,keyby="PERSON_ID",all=T)
+CKD<-merge(t12.advckd.hp,CKD,keyby="PERSON_ID",all=T)
+#개인정보 있는 곳 out.hp와 합치기
+CKD$CKD[is.na(CKD$CKD)]<-0
+CKD$ADVCKD[is.na(CKD$ADVCKD)]<-0
+# CKD[date+(숫자)<CKDDATE] 를 통해 PPI 처방 (숫자)일 후 CKD 상병코드 발생 환자 추출 가능
+# ADVCKD[date+(숫자)<ADVCKDDATE] 를 통해 PPI 처방 (숫자)일 후 advanced CKD 상병코드 발생 환자 추출 가능
+# CKD =1 이면 -> CKD 상병코드가 주상병/부상병에 발생한 환자
+# ADVCKD =1 이면 -> ADVCKD 상병코드가 주상병/부상병에 발생한 환자
+# CKD가 ADVCKD를 포함함
+t12.esrd.hp[,RECU_FR_DT:=ymd(RECU_FR_DT)]
+t12.esrd.hp<-t12.esrd.hp[order(PERSON_ID,RECU_FR_DT)][,.SD[1],keyby=PERSON_ID]
+# ESRD 상병코드를 가진 환자들만 모아서 최초 진단일만 남김
+t12.esrd.hp<-t12.esrd.hp[,.(PERSON_ID,N185=1,N185DATE=RECU_FR_DT,MAIN_SICK,SUB_SICK)]
+#PERSON_ID, N185를 가졌는지 여부 표시, N1185 첫 진단일을 N185DATE로 정리
+ESRD<-merge(t12.esrd.hp,t13.o1.hp,keyby="PERSON_ID",all=T)
+ESRD$N185[is.na(ESRD$N185)]<-0
+#ESRD에 N185 여부와 첫 날짜, O7020 or O9991 여부를 알 수 있는 정보를 합침
+
+
+
+#####################################
+##t16이 PERSON_ID를 갖고있는지 확인해야함##
+#####################################
+t16.esrd<-t16[GNL_NM_CD %in% code.bm]
+t16.esrd[,RECU_FR_DT:=ymd(RECU_FR_DT)]
+t16.esrd<-merge(t12.perkey[KEY_SEQ %in% t16.esrd$KEY_SEQ],t16.esrd,by="KEY_SEQ")
+#PERSON_ID 추가
+t16.esrd<-t16.esrd[order(PERSON_ID,RECU_FR_DT,MDCN_EXEC_FREQ)]
+#t16에서 ESRD에 해당하는 약물코드를 포함하는 자료만 얻어냄
+
+t16.esrd[,period.bm:=MDCN_EXEC_FREQ[.N]+RECU_FR_DT[.N]-RECU_FR_DT[1],keyby="PERSON_ID"]
+t16.esrd<-t16.esrd[,.SD[1],keyby="PERSON_ID"][,.(PERSON_ID,period.bm)]
+
+
+#t16.esrd<-t16.esrd[,.(PERSON_ID,period.bm=MDCN_EXEC_FREQ[.N]+RECU_FR_DT[.N]-RECU_FR_DT[1],keyby="PERSON_ID")][,.SD[1],keyby=PERSON_ID]
+#t16.esrd에 PERSON_ID, period.bm을 남김, period.bm은 해당 약물코드 처방 기간.
+ESRD<-merge(ESRD,t16.esrd,keyby="PERSON_ID",all=T)
+#ESRD에 약물코드 자료 합치기
+ESRD$period.bm[is.na(ESRD$period.bm)]<-0
+ESRD[,ESRD:=ifelse(N185==1,ifelse(period.o1>=90,1,ifelse(period.bm>=90,1,0)),0)]
+#주상병이나 부상병에 N185있으면서 O7020 O9991이 90일(3개월) 이상이거나, 복막투석액 처방코드가 90일 이상인 경우 ESRD열에 1로 표시, 나머지는 0으로 표시
+ESRD$ESRD[is.na(ESRD$ESRD)]<-0
+#NA여서 ifelse이후 NA로 나오는 놈들 모두 0으로 변경
+ESRD<-merge(out.hp,ESRD,keyby="PERSON_ID",all=T)
+#자격 DB와 함치기
+ESRD$ESRD[is.na(ESRD$ESRD)]<-0
+#자격 DB에서 ESRD가 없던 것들이 NA였는데 이들을 0으로 변경
+#ESRD가 1이면 ESRD０이면 ESRD 아님
+
+fwrite(AKI, "AKI.csv")
+fwrite(CKD, "CKD.csv")
+fwrite(ESRD, "ESRD.csv")
+
+#저장
