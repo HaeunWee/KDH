@@ -115,10 +115,12 @@ AKI<-merge(AKI,out.hp,keyby="PERSON_ID",all=T)
 AKI$o1[is.na(AKI$o1)]<-0
 AKI$o2[is.na(AKI$o2)]<-0
 AKI$AKI[is.na(AKI$AKI)]<-0
+
 # AKI[date+(숫자)<AKIDATE] 를 통해 PPI 처방 (숫자)일 후 AKI 상병코드 발생 환자 추출 가능
 # 추출 후 AKI가 1이면 -> 입원치료를 요하는 AKI
 # AKI * o1 이 1이면-> 투석치료를 요하는 AKI
 # AKI * o2 이 1이면-> 2일 이상의 CRRT 치료를 요하는 AKI
+
 t12.ckd.hp[,RECU_FR_DT:=ymd(RECU_FR_DT)]
 t12.advckd.hp[,RECU_FR_DT:=ymd(RECU_FR_DT)]
 t12.ckd.hp<-t12.ckd.hp[,.(PERSON_ID,CKD=1,CKDDATE=RECU_FR_DT,MAIN_SICK,SUB_SICK)]
@@ -136,6 +138,7 @@ CKD$ADVCKD[is.na(CKD$ADVCKD)]<-0
 # CKD =1 이면 -> CKD 상병코드가 주상병/부상병에 발생한 환자
 # ADVCKD =1 이면 -> ADVCKD 상병코드가 주상병/부상병에 발생한 환자
 # CKD가 ADVCKD를 포함함
+
 t12.esrd.hp[,RECU_FR_DT:=ymd(RECU_FR_DT)]
 t12.esrd.hp<-t12.esrd.hp[order(PERSON_ID,RECU_FR_DT)][,.SD[1],keyby=PERSON_ID]
 # ESRD 상병코드를 가진 환자들만 모아서 최초 진단일만 남김
@@ -146,10 +149,6 @@ ESRD$N185[is.na(ESRD$N185)]<-0
 #ESRD에 N185 여부와 첫 날짜, O7020 or O9991 여부를 알 수 있는 정보를 합침
 
 
-
-#####################################
-##t16이 PERSON_ID를 갖고있는지 확인해야함##
-#####################################
 t16.esrd<-t16[GNL_NM_CD %in% code.bm]
 t16.esrd[,RECU_FR_DT:=ymd(RECU_FR_DT)]
 t16.esrd<-merge(t12.perkey[KEY_SEQ %in% t16.esrd$KEY_SEQ],t16.esrd,by="KEY_SEQ")
@@ -176,8 +175,56 @@ ESRD$ESRD[is.na(ESRD$ESRD)]<-0
 #자격 DB에서 ESRD가 없던 것들이 NA였는데 이들을 0으로 변경
 #ESRD가 1이면 ESRD０이면 ESRD 아님
 
-fwrite(AKI, "AKI.csv")
-fwrite(CKD, "CKD.csv")
-fwrite(ESRD, "ESRD.csv")
+#AKI[AKIDATE<=start.ppi+365]$AKI<-0
+# PPI 처방시점 1년 이후에 AKI 상병코드 발생한 경우만 살리고 나머지는 AKI=0
+#CKD[CKDDATE<=start.ppi+365]$CKD<-0
+#CKD[ADVCKDDATE<=start.ppi+365]$ADVCKD<-0
+#PPI 처방 이후 1년 후에 CKD or ADVCKD 발생한 환자 빼고 CKD =0 ADVCKD=0
 
+#fwrite(AKI, "AKI.csv")
+#fwrite(CKD, "CKD.csv")
+#fwrite(ESRD, "ESRD.csv")
 #저장
+
+TOT<-merge(AKI[,.(PERSON_ID,o1,period.o1,o1DATE,o2,o2DATE,AKI,AKIDATE,STND_Y,SEX,AGE_GROUP,DTH_YM,start.ppi,period.ppi,freq.ppi)],CKD[,.(PERSON_ID,ADVCKD,ADVCKDDATE,CKD,CKDDATE)],keyby="PERSON_ID")
+TOT<-merge(TOT,ESRD[,.(PERSON_ID,period.bm,ESRD)])
+#한곳으로 모으기
+#입원치료 AKI-> AKI1, 투석치료AKI-> AKI2, 2일이상 CRRTAKI->AKI3  ///
+SIMPLETOT<-TOT[,.(PERSON_ID,AKI1=AKI,AKI2=AKI*o1,AKI3=AKI*o2,CKD,ADVCKD,ESRD,STND_Y,SEX,AGE_GROUP,DTH_YM,start.ppi,period.ppi,freq.ppi)]
+#간편보기, 
+#fwrite(TOT, "TOT.csv")
+#fwrite(SIMPLETOT, "SIMPLETOT.csv")
+
+
+ISTHISAKICKDTOT<-function(x,y){
+    AKITEMP<-AKI
+    AKITEMP[AKIDATE<=start.ppi+x]$AKI<-0
+    AKITEMP[is.na(start.ppi)]$AKI<-0
+    CKDTEMP<-CKD
+    CKDTEMP[CKDDATE<=start.ppi+y]$CKD<-0
+    CKDTEMP[ADVCKDDATE<=start.ppi+y]$ADVCKD<-0
+    CKDTEMP[is.na(start.ppi)]$CKD<-0
+    CKDTEMP[is.na(start.ppi)]$ADVCKD<-0
+    ppi.TOT<-merge(AKITEMP[,.(PERSON_ID,o1,period.o1,o1DATE,o2,o2DATE,AKI,AKIDATE,STND_Y,SEX,AGE_GROUP,DTH_YM,start.ppi,period.ppi,freq.ppi)],CKDTEMP[,.(PERSON_ID,ADVCKD,ADVCKDDATE,CKD,CKDDATE)],keyby="PERSON_ID")
+    ppi.TOT<-merge(ppi.TOT,ESRD[,.(PERSON_ID,period.bm,ESRD)])
+    ppi.SIMPLETOT<-ppi.TOT[,.(PERSON_ID,AKI1=AKI,AKI2=AKI*o1,AKI3=AKI*o2,CKD,ADVCKD,ESRD,STND_Y,SEX,AGE_GROUP,DTH_YM,start.ppi,period.ppi,freq.ppi,AKIDATE,ADVCKDDATE,CKDDATE)]
+    return(ppi.TOT)
+}
+ISTHISAKICKDSIMPLETOT<-function(x,y){
+  AKITEMP<-AKI
+  AKITEMP[AKIDATE<=start.ppi+x]$AKI<-0
+  AKITEMP[is.na(start.ppi)]$AKI<-0
+  CKDTEMP<-CKD
+  CKDTEMP[CKDDATE<=start.ppi+y]$CKD<-0
+  CKDTEMP[ADVCKDDATE<=start.ppi+y]$ADVCKD<-0
+  CKDTEMP[is.na(start.ppi)]$CKD<-0
+  CKDTEMP[is.na(start.ppi)]$ADVCKD<-0
+  ppi.TOT<-merge(AKITEMP[,.(PERSON_ID,o1,period.o1,o1DATE,o2,o2DATE,AKI,AKIDATE,STND_Y,SEX,AGE_GROUP,DTH_YM,start.ppi,period.ppi,freq.ppi)],CKDTEMP[,.(PERSON_ID,ADVCKD,ADVCKDDATE,CKD,CKDDATE)],keyby="PERSON_ID")
+  ppi.TOT<-merge(ppi.TOT,ESRD[,.(PERSON_ID,period.bm,ESRD)])
+  ppi.SIMPLETOT<-ppi.TOT[,.(PERSON_ID,AKI1=AKI,AKI2=AKI*o1,AKI3=AKI*o2,CKD,ADVCKD,ESRD,STND_Y,SEX,AGE_GROUP,DTH_YM,start.ppi,period.ppi,freq.ppi,AKIDATE,ADVCKDDATE,CKDDATE)]
+  return(ppi.SIMPLETOT)
+}
+
+##### ISTHISAKICKDTOT(x,y)  입력시 ppi 처방 안 받은 사람들과 처방시점+x일 이전(>=)에 AKI 상병코드 최초 발생한 환자는 AKI =0
+#####                           ppi 처방 안 받은 사람들과 처방시점+y일 이전(>=)에 CKD 상병코드 최초 발생한 환자는 CKD =0 / ADVCKD 상병코드 최초 발생자는 ADVCKD =0
+##### ISTHISAKICKDSIMPLETOT(x,y)   ISTHISAKICKDTOT(x,y)와 동일하나 정리된 모양
