@@ -1,0 +1,168 @@
+#
+# This is a Shiny web application. You can run the application by clicking
+# the 'Run App' button above.
+#
+# Find out more about building applications with Shiny here:
+#
+#    http://shiny.rstudio.com/
+#
+
+setwd('/home/whe')
+library(shiny)
+library(knitr)
+library(data.table)
+library(DT)
+library(fst)             ## For Fst binary format
+library(lubridate)
+library(magrittr)
+library(stringr)
+library(parallel)
+library(crosstalk)
+library(DT)
+
+PPI <- fread("PPI.csv")
+PPI <- PPI[AGE_GROUP>4]
+PPIpr <- PPI[,c(49, 50, 25:46, 8, 47, 48, 18, 16, 21, 23)]
+PPIpr
+aa <- lapply(5:18, function(x){
+    return(as.integer(PPIpr$AGE_GROUP==x))
+}) %>% Reduce(cbind,.)
+aa
+colnames(aa) <- c("20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", 
+                  "55-59", "60-64", "65-69", "70-74", "75-79", "80-84", ">85")
+PPIpr <- cbind(cbind(PPIpr[, 1:2], aa),PPIpr[, 3:31])
+
+
+PPIpr[, SEX := SEX-1]
+PPITABLE1 <- lapply(c(1,3:44),function(x){
+    c(sum(PPIpr[EXPCON==1][, x, with = FALSE]),
+      sum(PPIpr[EXPCON==2][, x, with=FALSE]))
+}) %>% Reduce(rbind, .)
+
+ppinm <- c("SEX = Female (%)", "20-24", "25-29", 
+           "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69",
+           "70-74", "75-79", "80-84", ">85", paste0(colnames(PPI[,25:46])," = Yes (%)"),
+           "AKI1", "AKI2", "AKI3", "CKD", "ADVCKD", "ESRD")
+
+rownames(PPITABLE1) <- ppinm
+
+PPIpr <- rbind("n"=c(nrow(PPIpr[EXPCON==1]),nrow(PPIpr[EXPCON==2])),PPITABLE1)
+colnames(PPIpr) <- c("Non-PPI","PPI")
+
+PPIpv <- lapply(1:44,function(x){
+    vv <- chisq.test(PPIpr[c(1,x),1:2])$p.value
+    return(vv)
+}) %>% Reduce(rbind, .)
+
+PPIpv <- round(PPIpv, digits = 4)
+colnames(PPIpv) <- c("p")
+PPIpr <- cbind(PPIpr, PPIpv)
+
+PPIpercent <- lapply(1:44, function(x){
+    c(paste0(as.integer(PPIpr[as.integer(x), 1]), " (", 100 * round(as.integer(PPIpr[as.integer(x), 1]) / as.integer(PPIpr[1, 1]), digits=4), ")"),
+      paste0(as.integer(PPIpr[as.integer(x), 2]), " (", 100 * round(as.integer(PPIpr[as.integer(x), 2]) / as.integer(PPIpr[1, 2]), digits=4), ")"))
+}) %>% Reduce(rbind, .)
+
+PPIpr[, 1] <- PPIpercent[, 1]
+PPIpr[, 2] <- PPIpercent[, 2]
+
+
+##### PPI 완성
+
+H2RA <- fread("H2RA.csv")
+H2RA <- H2RA[AGE_GROUP>4]
+H2RApr <- H2RA[,c(49, 50, 25:46, 8, 47, 48, 18, 16, 21, 23)]
+H2RApr
+aa <- lapply(5:18, function(x){
+    return(as.integer(H2RApr$AGE_GROUP==x))
+}) %>% Reduce(cbind,.)
+aa
+colnames(aa) <- c("20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", 
+                  "55-59", "60-64", "65-69", "70-74", "75-79", "80-84", ">85")
+H2RApr <- cbind(cbind(H2RApr[, 1:2], aa),H2RApr[, 3:31])
+
+
+H2RApr[, SEX := SEX-1]
+H2RATABLE1 <- lapply(c(1,3:44),function(x){
+    c(sum(H2RApr[EXPCON==1][, x, with = FALSE]),
+      sum(H2RApr[EXPCON==2][, x, with=FALSE]))
+}) %>% Reduce(rbind, .)
+
+H2RAnm <- c("SEX = Female (%)", "20-24", "25-29", 
+            "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69",
+            "70-74", "75-79", "80-84", ">85", paste0(colnames(H2RA[,25:46])," = Yes (%)"),
+            "AKI1", "AKI2", "AKI3", "CKD", "ADVCKD", "ESRD")
+
+rownames(H2RATABLE1) <- H2RAnm
+
+H2RApr <- rbind("n"=c(nrow(H2RApr[EXPCON==1]),nrow(H2RApr[EXPCON==2])),H2RATABLE1)
+colnames(H2RApr) <- c("Non-H2RA","H2RA")
+
+H2RApv <- lapply(1:44,function(x){
+    vv <- chisq.test(H2RApr[c(1,x),1:2])$p.value
+    return(vv)
+}) %>% Reduce(rbind, .)
+
+H2RApv <- round(H2RApv, digits = 4)
+colnames(H2RApv) <- c("p")
+H2RApr <- cbind(H2RApr, H2RApv)
+
+H2RApercent <- lapply(1:44, function(x){
+    c(paste0(as.integer(H2RApr[as.integer(x), 1]), " (", 100 * round(as.integer(H2RApr[as.integer(x), 1]) / as.integer(H2RApr[1, 1]), digits=4), ")"),
+      paste0(as.integer(H2RApr[as.integer(x), 2]), " (", 100 * round(as.integer(H2RApr[as.integer(x), 2]) / as.integer(H2RApr[1, 2]), digits=4), ")"))
+}) %>% Reduce(rbind, .)
+
+H2RApr[, 1] <- H2RApercent[, 1]
+H2RApr[, 2] <- H2RApercent[, 2]
+
+
+# H2RA 완성
+
+
+# Define UI for application that draws a histogram
+ui <- navbarPage(title = "PPIH2RA", 
+                 tabPanel("Table 1",
+                          sidebarLayout(
+                              sidebarPanel(
+                                  radioButtons(inputId="Study",label="Study",choices=list("PPI vs 나머지","H2RA vs 나머지"),inline=TRUE),
+                                  "HTA (1, 365, 365), HTA(2, 365, 365) 기준"
+                              ),
+                              mainPanel(
+                                  DT::DTOutput("Table1"),
+                                  
+                                 
+                              )
+                          )))
+
+# Define server logic required to draw a histogram
+server <- function(input, output) {
+    
+
+    output$Table1 <- DT::renderDT({
+        if(input$Study == "PPI vs 나머지"){
+            pr <- PPIpr
+        } else {
+            pr <- H2RApr
+        }
+       datatable(pr, options = list(
+           pageLength = 25,
+           lengthMenu = c(10, 25, 50)
+
+
+       )) %>% DT::formatStyle('p', target = "row", backgroundColor = styleInterval(0.01, c('yellow','default')))
+        
+    })
+    
+    
+    output$distPlot <- renderPlot({
+        # generate bins based on input$bins from ui.R
+        x    <- faithful[, 2]
+        bins <- seq(min(x), max(x), length.out = input$bins + 1)
+
+        # draw the histogram with the specified number of bins
+        hist(x, breaks = bins, col = 'darkgray', border = 'white')
+    })
+}
+
+# Run the application 
+shinyApp(ui = ui, server = server)
