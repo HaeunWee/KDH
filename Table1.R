@@ -24,6 +24,56 @@ library(survival)
 library(jstable)
 
 PPI <- fread("PPI.csv")
+# PERSON_ID
+# STND_Y : indexdate의 년도.
+# o1 : 행위코드에 O7020 | O9991 존재
+# period.o1 : 행위코드에 o1 이 처음 발생한 날로부터 마지막으로 발생한 날 + 처방일수까지
+# start.o1 : 행위코드에 처음으로 o1이 발생한 날
+# o2, period.o2, start.o2 마찬가지
+# start.ppi, period.ppi, freq.ppi, start.h2ra, period.h2ra, freq.h2ra : 위암에서의 ppi, h2ra와 동일
+# ADVCKD : ADVCKD 상병코드 (N183 N184 N185) 발생여부
+# start.ADVCKD : ADVCKD 상병코드 발생일
+# period.bm 복막투석액 처방기간, 첫 처방일로부터 마지막 처방일까지 + 처방일수
+# ESRD : ESRD의 조작적 정의를 만족하는지여부 0, 1
+# start.come 첫 내원일
+# EXPCON : 실헙군(1), 대조군(2)
+# PPI 의 경우 PPI를 처방받기 전에 적어도 1년 전의 기록이 있는 환자만 실험군이 되고
+# 1년 전의 기록이 없는 환자는 삭제, PPI를 복용하지 않은 환자는 대조군이 됨.
+# H2RA 는 PPI 와 동일한 구조이나 PPI가 H2RA로 바뀌는 것.
+# indexdate : 실험군은 PPI/H2RA를 첫 처방받기 1년 전, 대조군은 첫 내방일.
+# ~ 과거력 ~
+# AKI2 투석치료를 요하는 AKI 여부
+# AKI3 입원치료를 요하는 AKI 여부
+
+#PPI[, start.ESRD := ifelse(ESRD==1,start.ADVCKD,NA)]
+#PPI[, day.AKI := ymd(start.AKI) - ymd(start.come)]
+#PPI[, day.CKD := ymd(start.CKD) - ymd(start.come)]
+#PPI[, day.ADVCKD := ymd(start.ADVCKD) - ymd(start.come)]
+#PPI[, day.ESRD := ymd(start.ESRD) - ymd(start.come)]
+#PPI[, day.AKICON := as.integer(is.na(day.AKI))*(ymd(20131231)-ymd(start.come))]
+#PPI[day.AKICON==0]$day.AKICON <- NA
+#PPI[, day.CKDCON := as.integer(is.na(day.CKD))*(ymd(20131231)-ymd(start.come))]
+#PPI[day.CKDCON==0]$day.CKDCON <- NA
+#PPI[, day.ADVCKDCON := as.integer(is.na(day.ADVCKD))*(ymd(20131231)-ymd(start.come))]
+#PPI[day.ADVCKDCON==0]$day.ADVCKDCON <- NA
+#PPI[, day.ESRDCON := as.integer(is.na(day.ESRD))*(ymd(20131231)-ymd(start.come))]
+#PPI[day.ESRDCON==0]$day.ESRDCON <- NA
+
+#H2RA[, start.ESRD := ifelse(ESRD==1,start.ADVCKD,NA)]
+#H2RA[, day.AKI := ymd(start.AKI) - ymd(start.come)]
+#H2RA[, day.CKD := ymd(start.CKD) - ymd(start.come)]
+#H2RA[, day.ADVCKD := ymd(start.ADVCKD) - ymd(start.come)]
+#H2RA[, day.ESRD := ymd(start.ESRD) - ymd(start.come)]
+#H2RA[, day.AKICON := as.integer(is.na(day.AKI))*(ymd(20131231)-ymd(start.come))]
+#H2RA[day.AKICON==0]$day.AKICON <- NA
+#H2RA[, day.CKDCON := as.integer(is.na(day.CKD))*(ymd(20131231)-ymd(start.come))]
+#H2RA[day.CKDCON==0]$day.CKDCON <- NA
+#H2RA[, day.ADVCKDCON := as.integer(is.na(day.ADVCKD))*(ymd(20131231)-ymd(start.come))]
+#H2RA[day.ADVCKDCON==0]$day.ADVCKDCON <- NA
+#H2RA[, day.ESRDCON := as.integer(is.na(day.ESRD))*(ymd(20131231)-ymd(start.come))]
+#H2RA[day.ESRDCON==0]$day.ESRDCON <- NA
+
+
 PPI <- PPI[AGE_GROUP>4]
 PPIpr <- PPI[,c(49, 50, 25:46, 8, 47, 48, 18, 16, 21, 23)]
 PPIpr
