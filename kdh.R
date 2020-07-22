@@ -350,61 +350,6 @@ TOT$period.bm[is.na(TOT$period.bm)] <- 0
 
 
 
-HTA <- function(x, y, z){
-  # x = 1 (PPI vs 나머지) 2 (H2RA vs 나머지)
-  # y = 과거력을 index date y일 전부터 index date까지 검색함
-  #     ppi(1) or h2ra(2) 첫 복용일 포함 복용전 y일을 확보하지 못할 경우 삭제
-  # z = ppi(1) or h2ra(2) 첫 복용일 포함 z일 이전 질병 발병자들만 질병 발병자들로봄 (wash-out period)
-  TOT.temp <- TOT
-  TOT.temp[, "EXPCON"] = 3
-  TOT.temp[, "indexdate"] = ymd(20000303)
-  # EXPCON = 1 (실험군) 2 (대조군) 3(버리는군)
-  if(x==1){
-    TOT.temp[!is.na(start.ppi)][start.ppi >= start.come + y]$EXPCON <- 1   
-    TOT.temp[is.na(start.ppi)]$EXPCON <- 2
-    TOT.temp <- TOT.temp[EXPCON == 1 | EXPCON ==2]
-    TOT.temp[EXPCON == 1]$indexdate <- TOT.temp[EXPCON == 1]$start.ppi
-    # 실험군은 ppi를 처음으로 처방받은 날짜가 indexdate
-    TOT.temp[EXPCON == 2]$indexdate <- TOT.temp[EXPCON ==2 ]$start.come + y
-    # 대조군은 방문일 포함 y일 이후가 indexdate
-    TOT.temp[start.AKI <= start.ppi + z]$AKI <- 0
-    TOT.temp[start.CKD <= start.ppi + z]$CKD <- 0
-    TOT.temp[start.ADVCKD <= start.ppi + z]$ADVCKD <- 0
-  }else{
-    TOT.temp[!is.na(start.h2ra)][start.h2ra > start.come + y]$EXPCON <- 1
-    TOT.temp[is.na(start.h2ra)]$EXPCON <- 2
-    TOT.temp <- TOT.temp[EXPCON == 1 | EXPCON ==2]
-    TOT.temp[EXPCON == 1]$indexdate <- TOT.temp[EXPCON == 1]$start.ppi
-    TOT.temp[EXPCON == 2]$indexdate <- TOT.temp[EXPCON ==2 ]$start.come + y
-    TOT.temp[start.AKI <= start.h2ra + z]$AKI <- 0
-    TOT.temp[start.CKD <= start.h2ra + z]$CKD <- 0
-    TOT.temp[start.ADVCKD <= start.h2ra + z]$ADVCKD <- 0
-  }
-  
-  ## 위암연구의 과거력과 모양 동일
-  vars.t14pre <- parallel::mclapply(1:length(t14.pre), function(i){
-    person.ev <- merge(TOT.temp[, .(PERSON_ID, indexdate)], t14.sym[str_sub(SICK_SYM, 1, 3) %in% t14.pre[[i]]], by = "PERSON_ID")[order(PERSON_ID, RECU_FR_DT)][, .SD[1], keyby = "PERSON_ID"][RECU_FR_DT <= indexdate][, .(PERSON_ID, var = 1)]
-    vv <- merge(TOT.temp[, .(PERSON_ID)], person.ev, by = "PERSON_ID", all = T)[, var := ifelse(is.na(var), 0, 1)]$var
-    return(vv)
-  }) %>% Reduce(cbind, .)
-  colnames(vars.t14pre) <- paste0("Pre_", names(t14.pre))
-  
-  vars.t16pre <- parallel::mclapply(1:length(t16.pre), function(i){
-    person.ev <- merge(TOT.temp[, .(PERSON_ID, indexdate)], t16.sym[GNL_NM_CD %in% t16.pre[[i]]], by = "PERSON_ID")[order(PERSON_ID, RECU_FR_DT)][, .SD[1], keyby = "PERSON_ID"][RECU_FR_DT <= indexdate][, .(PERSON_ID, var = 1)]
-    vv <- merge(TOT.temp[, .(PERSON_ID)], person.ev, by = "PERSON_ID", all = T)[, var := ifelse(is.na(var), 0, 1)]$var
-    return(vv)
-  }) %>% Reduce(cbind, .)
-  colnames(vars.t16pre) <- paste0("Pre_", names(t16.pre))
-  
-  TOT.temp <- cbind(TOT.temp, vars.t14pre)
-  TOT.temp <- cbind(TOT.temp, vars.t16pre)
-  TOT.temp[, AKI2 := AKI * o1]
-  TOT.temp[, AKI3 := AKI * o2]
-  TOT.temp[, ESRD := ESRD * ADVCKD]
-  return(TOT.temp)
-}
-
-
 
   
 
@@ -441,3 +386,27 @@ HTA <- function(x, y, z){
 ##### ISTHISAKICKDTOT(x,y)  입력시 ppi 처방 안 받은 사람들과 처방시점+x일 이전(>=)에 AKI 상병코드 최초 발생한 환자는 AKI =0
 #####                           ppi 처방 안 받은 사람들과 처방시점+y일 이전(>=)에 CKD 상병코드 최초 발생한 환자는 CKD =0 / ADVCKD 상병코드 최초 발생자는 ADVCKD =0
 ##### ISTHISAKICKDSIMPLETOT(x,y)   ISTHISAKICKDTOT(x,y)와 동일하나 정리된 모양
+
+pr <- HTA(1,365,365)
+pr[,STND_Y := as.integer(str_sub(indexdate,1,4))]
+pr<-merge(pr,jk[PERSON_ID %in% pr$PERSON_ID],by=c("PERSON_ID","STND_Y"))
+
+pr <- fread("pr.csv")
+tb.chi <- table(pr[,.(EXPCON, SEX)])
+chisq.test(tb.chi)
+tb.chi <- table(pr[,.(EXPCON, AKI)])
+chisq.test(tb.chi)
+pr.ttest <- t.test(pr[EXPCON==1]$period.bm,pr[EXPCON==2]$period.bm)
+pr.ttest
+
+
+pr2 <- HTA(2,365,365)
+pr2[,STND_Y := as.integer(str_sub(indexdate,1,4))]
+pr2<-merge(pr2,jk[PERSON_ID %in% pr$PERSON_ID],by=c("PERSON_ID","STND_Y"))
+tb.chi <- table(pr2[,.(EXPCON, SEX)])
+chisq.test(tb.chi)
+tb.chi <- table(pr2[,.(EXPCON, AKI)])
+chisq.test(tb.chi)
+pr.ttest <- t.test(pr2[EXPCON==1]$period.bm,pr2[EXPCON==2]$period.bm)
+pr.ttest
+
