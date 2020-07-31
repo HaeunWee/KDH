@@ -35,7 +35,7 @@ ui <- navbarPage(title = "CKD",
                  tabPanel("Table 1",
                           sidebarLayout(
                               sidebarPanel(
-                                  radioButtons(inputId="Study", label="Study", choices= c("PPI vs non-USER", "H2RA vs non-USER"), inline = T),
+                                  radioButtons(inputId="Study", label="Study", choices= c("PPI vs non-USER", "H2RA vs non-USER", "PPI vs H2RA"), inline = T),
                                   radioButtons("mat_tb1", "Data type", choices = c("Original", "Matching"), selected = "Matching", inline = T),
                                   includeMarkdown("studyN.md")
                                   
@@ -48,7 +48,7 @@ ui <- navbarPage(title = "CKD",
                  tabPanel("Cox model",
                           sidebarLayout(
                             sidebarPanel(
-                              radioButtons(inputId="Study_cox", label="Study", choices= c("PPI vs non-USER", "H2RA vs non-USER"), inline = T),
+                              radioButtons(inputId="Study_cox", label="Study", choices= c("PPI vs non-USER", "H2RA vs non-USER",  "PPI vs H2RA"), inline = T),
                               radioButtons("mat_cox", "Data type", choices = c("Original", "Matching"), selected = "Matching", inline = T),
                               radioButtons("dep_cox", "Outcome", choices = c("AKI", "AKI2", "AKI3", "ADVCKD", "CKD", "ESRD"), selected = "AKI", inline = T),
                               selectInput("cov_cox", "Covariate", choices = c("EXPCON", "SEX", "AGE_GROUP", grep("Pre_", setdiff(names(data.PPI), "Pre_PPI"), value = T)), selected = "EXPCON", multiple = T)
@@ -63,7 +63,7 @@ ui <- navbarPage(title = "CKD",
                  tabPanel("Kaplan-meier plot",
                           sidebarLayout(
                             sidebarPanel(
-                              radioButtons(inputId="Study_kap", label="Study", choices= c("PPI vs non-USER", "H2RA vs non-USER"), inline = T),
+                              radioButtons(inputId="Study_kap", label="Study", choices= c("PPI vs non-USER", "H2RA vs non-USER",  "PPI vs H2RA"), inline = T),
                               radioButtons("mat_kap", "Data type", choices = c("Original", "Matching"), selected = "Matching", inline = T),
                               radioButtons("event_kap", "Event", choices = c("AKI", "AKI2", "AKI3", "ADVCKD", "CKD", "ESRD"), selected = "AKI", inline = T)
                             ),
@@ -86,12 +86,17 @@ server <- function(input, output) {
     tb1 <- reactive({
       switch(input$Study, 
              "PPI vs non-USER" = switch(input$mat_tb1, "Original" = list.tb1$data.PPI, "Matching" = list.tb1$mat.PPI),
-             "H2RA vs non-USER" = switch(input$mat_tb1, "Original" = list.tb1$data.H2RA, "Matching" = list.tb1$mat.H2RA))
+             "H2RA vs non-USER" = switch(input$mat_tb1, "Original" = list.tb1$data.H2RA, "Matching" = list.tb1$mat.H2RA),
+             "PPI vs H2RA" = switch(input$mat_tb1, "Original" = list.tb1$data.PPIvsH2RA, "Matching" = list.tb1$mat.PPIvsH2RA))
     })
 
     output$table1 <- renderDT({
-      
-      datatable(tb1(), caption = paste0("Original"), rownames = T, extensions= "Buttons",
+      out.tb1 <- tb1()
+      if (input$Study == "PPI vs H2RA"){
+        colnames(out.tb1)[2:3] <- c("H2RA", "PPI")
+      }
+       
+      datatable(out.tb1, caption = paste0("Original"), rownames = T, extensions= "Buttons",
                 options = c(opt.tb1("tb1"),
                             list(columnDefs = list(list(visible=FALSE, targets= which(colnames(tb1()) %in% c("test","sig"))))
                             ),
@@ -104,7 +109,8 @@ server <- function(input, output) {
     data.cox <- reactive({
       switch(input$Study_cox, 
              "PPI vs non-USER" = switch(input$mat_cox, "Original" = data.PPI, "Matching" = mat.PPI),
-             "H2RA vs non-USER" = switch(input$mat_cox, "Original" = data.H2RA, "Matching" = mat.H2RA))
+             "H2RA vs non-USER" = switch(input$mat_cox, "Original" = data.H2RA, "Matching" = mat.H2RA),
+             "PPI vs H2RA" = switch(input$mat_cox, "Original" = data.PPIvsH2RA, "Matching" = mat.PPIvsH2RA))
     })
     
     output$tablecox <- renderDT({
@@ -113,6 +119,9 @@ server <- function(input, output) {
       )
       data <- data.cox()
       label <- label
+      if (input$Study_cox == "PPI vs H2RA"){
+        label[variable == "EXPCON", val_label := c("H2RA", "PPI")]
+      }
       
       
       var.event <- input$dep_cox
@@ -150,7 +159,8 @@ server <- function(input, output) {
     data.kap <- reactive({
       switch(input$Study_kap, 
              "PPI vs non-USER" = switch(input$mat_kap, "Original" = data.PPI, "Matching" = mat.PPI),
-             "H2RA vs non-USER" = switch(input$mat_kap, "Original" = data.H2RA, "Matching" = mat.H2RA))
+             "H2RA vs non-USER" = switch(input$mat_kap, "Original" = data.H2RA, "Matching" = mat.H2RA),
+             "PPI vs H2RA" = switch(input$mat_kap, "Original" = data.PPIvsH2RA, "Matching" = mat.PPIvsH2RA))
     })
     
     
@@ -159,6 +169,9 @@ server <- function(input, output) {
       
       data <- data.kap()
       label <- label
+      if (input$Study_kap == "PPI vs H2RA"){
+        label[variable == "EXPCON", val_label := c("H2RA", "PPI")]
+      }
       
       
       Makekaplan(event.original = input$event_kap, day.original = paste0(input$event_kap, "_Day"),  var.group = "EXPCON", data = data, data.label = label,
