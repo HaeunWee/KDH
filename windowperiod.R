@@ -45,8 +45,9 @@ t16h2ra <- t16h2ra[order(PERSON_ID, RECU_FR_DT,MDCN_EXEC_FREQ)]
 
 
 
-PPIWP <- function(x){
+PPIWP <- function(x, y){
   #x = Window period
+  #y = 0, 30, 60, 90, 120
   
   t16ppif <- t16ppi
   t16ppif <- t16ppif[order(PERSON_ID, RECU_FR_DT, MDCN_EXEC_FREQ, KEY_SEQ, SEQ_NO)]
@@ -77,15 +78,24 @@ PPIWP <- function(x){
   t16ppif <- t16ppif[order(RECU_FR_DT + MDCN_EXEC_FREQ)]
   t16ppif.ini <- t16ppif[, .SD[1], by = c('PERSON_ID','ooo')]
   t16ppifpr <- merge(t16ppif.ini[, .(PERSON_ID, ooo, periodstart.ppi = RECU_FR_DT)], t16ppif.fin[, .(PERSON_ID, ooo, periodfinish.ppi = RECU_FR_DT + MDCN_EXEC_FREQ)], keyby=c("PERSON_ID, ooo"))
-  t16ppifpr <- t16ppifpr[, .(PERSON_ID, nperiod.ppi = periodfinish.ppi - periodstart.ppi)]
+  t16ppifpr <- t16ppifpr[, .(PERSON_ID, nperiod.ppi = periodfinish.ppi - periodstart.ppi, periodstart.ppi)]
   t16ppifpr <- t16ppifpr[order(PERSON_ID, nperiod.ppi)]
-  t16ppifpr <- t16ppifpr[, .SD[.N], by="PERSON_ID"]
+  t16ppifpr <- t16ppifpr[nperiod.ppi >= y]
+  t16ppifpr <- t16ppifpr[order(PERSON_ID, periodstart.ppi)]
+  
+  if(y==0){
+    t16ppifpr <- t16ppifpr[order(PERSON_ID, nperiod.ppi, -periodstart.ppi)]
+    t16ppifpr <- t16ppifpr[, .SD[.N], by="PERSON_ID"]
+  } else {
+    t16ppifpr <- t16ppifpr[, .SD[1], by="PERSON_ID"]
+  }
   
   return(t16ppifpr)
 }
 
-H2RAWP <- function(x){
+H2RAWP <- function(x, y){
   #x = Window period
+  #y = 30, 60, 90, 120
   
   t16h2raf <- t16h2ra
   t16h2raf <- t16h2raf[order(PERSON_ID, RECU_FR_DT, MDCN_EXEC_FREQ, KEY_SEQ, SEQ_NO)]
@@ -116,14 +126,68 @@ H2RAWP <- function(x){
   t16h2raf <- t16h2raf[order(RECU_FR_DT + MDCN_EXEC_FREQ)]
   t16h2raf.ini <- t16h2raf[, .SD[1], by = c('PERSON_ID','ooo')]
   t16h2rafpr <- merge(t16h2raf.ini[, .(PERSON_ID, ooo, periodstart.h2ra = RECU_FR_DT)], t16h2raf.fin[, .(PERSON_ID, ooo, periodfinish.h2ra = RECU_FR_DT + MDCN_EXEC_FREQ)], keyby=c("PERSON_ID, ooo"))
-  t16h2rafpr <- t16h2rafpr[, .(PERSON_ID, nperiod.h2ra = periodfinish.h2ra - periodstart.h2ra)]
+  t16h2rafpr <- t16h2rafpr[, .(PERSON_ID, nperiod.h2ra = periodfinish.h2ra - periodstart.h2ra, periodstart.h2ra)]
   t16h2rafpr <- t16h2rafpr[order(PERSON_ID, nperiod.h2ra)]
-  t16h2rafpr <- t16h2rafpr[, .SD[.N], by="PERSON_ID"]
+  t16h2rafpr <- t16h2rafpr[nperiod.h2ra >= y]
+  t16h2rafpr <- t16h2rafpr[order(PERSON_ID, periodstart.h2ra)]
+
+  if(y==0){
+    t16h2rafpr <- t16h2rafpr[order(PERSON_ID, nperiod.h2ra, -periodstart.h2ra)]
+    t16h2rafpr <- t16h2rafpr[, .SD[.N], by="PERSON_ID"]
+  } else {
+    t16h2rafpr <- t16h2rafpr[, .SD[1], by="PERSON_ID"]
+  }
+  
   
   return(t16h2rafpr)
 }
 
-t16ppipr <- PPIWP(2)
-t16h2rapr <- H2RAWP(2)
-nperiod <- merge(t16ppipr, t16h2rapr, all=T)
-fwrite(nperiod, "nperiod.csv")
+t16ppipr <- PPIWP(2, 0)
+t16h2rapr <- H2RAWP(2, 0)
+t16ppipr30 <- PPIWP(2, 30)
+t16h2rapr30 <- H2RAWP(2, 30)
+t16ppipr60 <- PPIWP(2, 60)
+t16h2rapr60 <- H2RAWP(2, 60)
+t16ppipr90 <- PPIWP(2, 90)
+t16h2rapr90 <- H2RAWP(2, 90)
+t16ppipr180 <- PPIWP(2, 180)
+t16h2rapr180 <- H2RAWP(2, 180)
+
+nperiod0 <- merge(t16ppipr, t16h2rapr, all=T, keyby="PERSON_ID")
+colnames(nperiod0) <- c("PERSON_ID", "nperiod.ppi0", "periodstart.ppi0", "nperiod.h2ra0", "periodstart.h2ra0")
+
+nperiod30 <- merge(t16ppipr30, t16h2rapr30, all=T, keyby="PERSON_ID")
+colnames(nperiod30) <- c("PERSON_ID", "nperiod.ppi30", "periodstart.ppi30", "nperiod.h2ra30", "periodstart.h2ra30")
+
+nperiod60 <- merge(t16ppipr60, t16h2rapr60, all=T, keyby="PERSON_ID")
+colnames(nperiod60) <- c("PERSON_ID", "nperiod.ppi60", "periodstart.ppi60", "nperiod.h2ra60", "periodstart.h2ra60")
+
+nperiod90 <- merge(t16ppipr90, t16h2rapr90, all=T, keyby="PERSON_ID")
+colnames(nperiod90) <- c("PERSON_ID", "nperiod.ppi90", "periodstart.ppi90", "nperiod.h2ra90", "periodstart.h2ra90")
+
+nperiod180 <- merge(t16ppipr180, t16h2rapr180, all=T, keyby="PERSON_ID")
+colnames(nperiod180) <- c("PERSON_ID", "nperiod.ppi180", "periodstart.ppi180", "nperiod.h2ra180", "periodstart.h2ra180")
+
+fwrite(nperiod0, "nperiod0.csv")
+fwrite(nperiod30, "nperiod30.csv")
+fwrite(nperiod60, "nperiod60.csv")
+fwrite(nperiod90, "nperiod90.csv")
+fwrite(nperiod180, "nperiod180.csv")
+
+#PPI <- merge(PPI, t16ppipr, keyby="PERSON_ID")
+#PPI$nperiod.ppi[is.na(PPI$nperiod.ppi)] <- 0
+#H2RA <- merge(H2RA, t16h2rapr, keyby="PERSON_ID")
+#H2RA$nperiod.h2ra[is.na(H2RA$nperiod.h2ra)] <- 0
+
+#fwrite(PPI, "PPIwp2.csv")
+#fwrite(H2RA, "H2RAwp2.csv")
+
+
+
+#nperiod <- fread("nperiod.csv")
+
+rm(t12.perkey)
+rm(t16h2ra)
+rm(t16ppi)
+rm(t16ppipr)
+rm(t16h2rapr)
