@@ -30,14 +30,18 @@ Makekaplan <- function(event.original = "TLF", day.original = "TLFDay", var.grou
   
 }
 
+
+label.dinfo <- c("PPI 30 days vs non-PPI" = 2, "PPI 60 days vs non-PPI" = 5, "PPI 90 days vs non-PPI" = 8, "PPI 180 days vs non-PPI" = 11,
+  "PPI 30 days vs PPI < 30 days" = 3, "PPI 60 days vs PPI < 30 days" = 6, "PPI 90 days vs PPI < 30 days" = 9, "PPI 180 days vs PPI < 30 days" = 12,
+  "PPI 30 days vs H2RA 30 days" = 1, "PPI 60 days vs H2RA 60 days" = 4, "PPI 90 days vs H2RA 90 days" = 7, "PPI 180 days vs H2RA 180 days" = 10)
+
 # Define UI for application that draws a histogram
 ui <- navbarPage(title = "CKD", 
                  tabPanel("Table 1",
                           sidebarLayout(
                               sidebarPanel(
-                                  radioButtons(inputId="Study", label="Study", choices= c("PPI vs non-USER", "H2RA vs non-USER", "PPI vs H2RA"), inline = T),
-                                  radioButtons("mat_tb1", "Data type", choices = c("Original", "Matching"), selected = "Matching", inline = T),
-                                  includeMarkdown("studyN.md")
+                                  radioButtons(inputId="Study", label="Study", choices= label.dinfo, inline = T),
+                                  radioButtons("mat_tb1", "Data type", choices = c("Original", "Matching"), selected = "Matching", inline = T)
                                   
                               ),
                               mainPanel(
@@ -48,10 +52,10 @@ ui <- navbarPage(title = "CKD",
                  tabPanel("Cox model",
                           sidebarLayout(
                             sidebarPanel(
-                              radioButtons(inputId="Study_cox", label="Study", choices= c("PPI vs non-USER", "H2RA vs non-USER",  "PPI vs H2RA"), inline = T),
+                              radioButtons(inputId="Study_cox", label="Study", choices= label.dinfo, inline = T),
                               radioButtons("mat_cox", "Data type", choices = c("Original", "Matching"), selected = "Matching", inline = T),
-                              radioButtons("dep_cox", "Outcome", choices = c("AKI", "AKI2", "AKI3", "ADVCKD", "CKD", "ESRD"), selected = "AKI", inline = T),
-                              selectInput("cov_cox", "Covariate", choices = c("EXPCON", "SEX", "AGE_GROUP", grep("Pre_", setdiff(names(data.PPI), "Pre_PPI"), value = T)), selected = "EXPCON", multiple = T)
+                              radioButtons("dep_cox", "Outcome", choices = c( "ADVCKD", "CKD", "ESRD"), selected = "AKI", inline = T),
+                              selectInput("cov_cox", "Covariate", choices = c("EXPCON", "SEX", "AGE_GROUP", grep("Pre_", names(dinfo[[2]]$original), value = T)), selected = "EXPCON", multiple = T)
                             ),
                             mainPanel(
                               withLoader(DTOutput("tablecox"), type="html", loader="loader6")
@@ -63,9 +67,9 @@ ui <- navbarPage(title = "CKD",
                  tabPanel("Kaplan-meier plot",
                           sidebarLayout(
                             sidebarPanel(
-                              radioButtons(inputId="Study_kap", label="Study", choices= c("PPI vs non-USER", "H2RA vs non-USER",  "PPI vs H2RA"), inline = T),
+                              radioButtons(inputId="Study_kap", label="Study", choices= label.dinfo, inline = T),
                               radioButtons("mat_kap", "Data type", choices = c("Original", "Matching"), selected = "Matching", inline = T),
-                              radioButtons("event_kap", "Event", choices = c("AKI", "AKI2", "AKI3", "ADVCKD", "CKD", "ESRD"), selected = "AKI", inline = T)
+                              radioButtons("event_kap", "Event", choices = c( "ADVCKD", "CKD", "ESRD"), selected = "AKI", inline = T)
                             ),
                             mainPanel(
                               withLoader(plotOutput("kap"), type="html", loader="loader6"),
@@ -83,153 +87,146 @@ ui <- navbarPage(title = "CKD",
 server <- function(input, output) {
   
   
-    tb1 <- reactive({
-      switch(input$Study, 
-             "PPI vs non-USER" = switch(input$mat_tb1, "Original" = list.tb1$data.PPI, "Matching" = list.tb1$mat.PPI),
-             "H2RA vs non-USER" = switch(input$mat_tb1, "Original" = list.tb1$data.H2RA, "Matching" = list.tb1$mat.H2RA),
-             "PPI vs H2RA" = switch(input$mat_tb1, "Original" = list.tb1$data.PPIvsH2RA, "Matching" = list.tb1$mat.PPIvsH2RA))
-    })
-
-    output$table1 <- renderDT({
-      out.tb1 <- tb1()
-      if (input$Study == "PPI vs H2RA"){
-        colnames(out.tb1)[2:3] <- c("H2RA", "PPI")
-      }
-       
-      datatable(out.tb1, caption = paste0("Original"), rownames = T, extensions= "Buttons",
-                options = c(opt.tb1("tb1"),
-                            list(columnDefs = list(list(visible=FALSE, targets= which(colnames(tb1()) %in% c("test","sig"))))
-                            ),
-                            list(scrollX = TRUE)
-                )) %>% formatStyle("sig", target = 'row' ,backgroundColor = styleEqual("**", 'yellow'))
-    })
+  tb1 <- reactive({
+    switch(input$mat_tb1, 
+           "Original" = list.tb1[[as.integer(input$Study)]][[1]],
+           "Matching" = list.tb1[[as.integer(input$Study)]][[2]])
+  })
+  
+  output$table1 <- renderDT({
+    out.tb1 <- tb1()
+    
+    colnames(out.tb1)[2:3] <- strsplit(names(which(label.dinfo == as.integer(input$Study))), " vs ")[[1]][2:1]
+    datatable(out.tb1, caption = paste0("Original"), rownames = T, extensions= "Buttons",
+              options = c(opt.tb1("tb1"),
+                          list(columnDefs = list(list(visible=FALSE, targets= which(colnames(tb1()) %in% c("test","sig"))))
+                          ),
+                          list(scrollX = TRUE)
+              )) %>% formatStyle("sig", target = 'row' ,backgroundColor = styleEqual("**", 'yellow'))
+  })
+  
+  
+  
+  data.cox <- reactive({
+    switch(input$mat_cox, 
+           "Original" = dinfo[[as.integer(input$Study_cox)]][[1]],
+           "Matching" = dinfo[[as.integer(input$Study_cox)]][[2]])
+  })
+  
+  output$tablecox <- renderDT({
+    validate(
+      need(!is.null(input$cov_cox), "Please select at least 1 independent variable.")
+    )
+    data <- data.cox()
+    label <- label[, .SD]
+    label[variable == "EXPCON", val_label := strsplit(names(which(label.dinfo == as.integer(input$Study_cox))), " vs ")[[1]][2:1]]
+    
+    
+    var.event <- input$dep_cox
+    var.day <- paste0(var.event, "_Day")
+    
+    
+    data[[var.event]] <- as.numeric(as.vector(data[[var.event]]))
+    
+    forms.cox <- as.formula(paste("Surv(", var.day,",", var.event,") ~ ", paste(input$cov_cox, collapse = "+"), sep=""))
+    
+    
+    cc <- substitute(survival::coxph(.form, data= data, model = T), list(.form= forms.cox))
+    res.cox <- eval(cc)
+    tb.cox <- jstable::cox2.display(res.cox, dec = 2)
+    tb.cox <- jstable::LabeljsCox(tb.cox, ref = label)
+    out.cox <- rbind(tb.cox$table, tb.cox$metric)
+    sig <- out.cox[, ncol(out.cox)]
+    sig <- gsub("< ", "", sig)
+    sig <- ifelse(as.numeric(as.vector(sig)) <= 0.05, "**", NA)
+    out.cox <- cbind(out.cox, sig)
+    
+    cap.cox <- paste("Cox's proportional hazard model on time ('", label[variable == var.day, var_label][1] , "') to event ('", label[variable == var.event, var_label][1], "')", sep="")
+    
+    hide <- which(colnames(out.cox) == c("sig"))
+    datatable(out.cox, rownames=T, extensions= "Buttons", caption = cap.cox,
+              options = c(opt.tbreg(cap.cox),
+                          list(columnDefs = list(list(visible=FALSE, targets= hide))
+                          )
+              )
+    )  %>% formatStyle("sig", target = 'row',backgroundColor = styleEqual("**", 'yellow'))
+    
+    
+  })
+  
+  data.kap <- reactive({
+    switch(input$mat_kap, 
+           "Original" = dinfo[[as.integer(input$Study_kap)]][[1]],
+           "Matching" = dinfo[[as.integer(input$Study_kap)]][[2]])
+  })
+  
+  
+  obj.km <- reactive({
+    req(input$event_kap)
+    
+    data <- data.kap()
+    label <- label[, .SD]
+    label[variable == "EXPCON", val_label := strsplit(names(which(label.dinfo == as.integer(input$Study_kap))), " vs ")[[1]][2:1]]
     
     
     
-    data.cox <- reactive({
-      switch(input$Study_cox, 
-             "PPI vs non-USER" = switch(input$mat_cox, "Original" = data.PPI, "Matching" = mat.PPI),
-             "H2RA vs non-USER" = switch(input$mat_cox, "Original" = data.H2RA, "Matching" = mat.H2RA),
-             "PPI vs H2RA" = switch(input$mat_cox, "Original" = data.PPIvsH2RA, "Matching" = mat.PPIvsH2RA))
-    })
+    Makekaplan(event.original = input$event_kap, day.original = paste0(input$event_kap, "_Day"),  var.group = "EXPCON", data = data, data.label = label,
+               timeby = 365) 
     
-    output$tablecox <- renderDT({
-      validate(
-        need(!is.null(input$cov_cox), "Please select at least 1 independent variable.")
+  })
+  
+  output$kap <- renderPlot({
+    print(obj.km())
+  })
+  
+  output$downloadControls_kap <- renderUI({
+    fluidRow(
+      column(4,
+             selectizeInput("kap_file_ext", "File extension (dpi = 300)", 
+                            choices = c("jpg","pdf", "tiff", "svg", "emf"), multiple = F, 
+                            selected = "jpg"
+             )
+      ),
+      column(4,
+             sliderInput("fig_width_kap", "Width (in):",
+                         min = 5, max = 20, value = 8
+             )
+      ),
+      column(4,
+             sliderInput("fig_height_kap", "Height (in):",
+                         min = 5, max = 20, value = 6
+             )
       )
-      data <- data.cox()
-      label <- label
-      if (input$Study_cox == "PPI vs H2RA"){
-        label[variable == "EXPCON", val_label := c("H2RA", "PPI")]
-      }
-      
-      
-      var.event <- input$dep_cox
-      var.day <- paste0(var.event, "_Day")
-      
-      
-      data[[var.event]] <- as.numeric(as.vector(data[[var.event]]))
-      
-      forms.cox <- as.formula(paste("Surv(", var.day,",", var.event,") ~ ", paste(input$cov_cox, collapse = "+"), sep=""))
-      
-      
-      cc <- substitute(survival::coxph(.form, data= data, model = T), list(.form= forms.cox))
-      res.cox <- eval(cc)
-      tb.cox <- jstable::cox2.display(res.cox, dec = 2)
-      tb.cox <- jstable::LabeljsCox(tb.cox, ref = label)
-      out.cox <- rbind(tb.cox$table, tb.cox$metric)
-      sig <- out.cox[, ncol(out.cox)]
-      sig <- gsub("< ", "", sig)
-      sig <- ifelse(as.numeric(as.vector(sig)) <= 0.05, "**", NA)
-      out.cox <- cbind(out.cox, sig)
-      
-      cap.cox <- paste("Cox's proportional hazard model on time ('", label[variable == var.day, var_label][1] , "') to event ('", label[variable == var.event, var_label][1], "')", sep="")
-      
-      hide <- which(colnames(out.cox) == c("sig"))
-      datatable(out.cox, rownames=T, extensions= "Buttons", caption = cap.cox,
-                options = c(opt.tbreg(cap.cox),
-                            list(columnDefs = list(list(visible=FALSE, targets= hide))
-                            )
-                )
-      )  %>% formatStyle("sig", target = 'row',backgroundColor = styleEqual("**", 'yellow'))
-      
-      
-    })
-    
-    data.kap <- reactive({
-      switch(input$Study_kap, 
-             "PPI vs non-USER" = switch(input$mat_kap, "Original" = data.PPI, "Matching" = mat.PPI),
-             "H2RA vs non-USER" = switch(input$mat_kap, "Original" = data.H2RA, "Matching" = mat.H2RA),
-             "PPI vs H2RA" = switch(input$mat_kap, "Original" = data.PPIvsH2RA, "Matching" = mat.PPIvsH2RA))
-    })
-    
-    
-    obj.km <- reactive({
-      req(input$event_kap)
-      
-      data <- data.kap()
-      label <- label
-      if (input$Study_kap == "PPI vs H2RA"){
-        label[variable == "EXPCON", val_label := c("H2RA", "PPI")]
-      }
-      
-      
-      Makekaplan(event.original = input$event_kap, day.original = paste0(input$event_kap, "_Day"),  var.group = "EXPCON", data = data, data.label = label,
-                timeby = 365) 
-      
-    })
-    
-    output$kap <- renderPlot({
-      print(obj.km())
-    })
-    
-    output$downloadControls_kap <- renderUI({
-      fluidRow(
-        column(4,
-               selectizeInput("kap_file_ext", "File extension (dpi = 300)", 
-                              choices = c("jpg","pdf", "tiff", "svg", "emf"), multiple = F, 
-                              selected = "jpg"
-               )
-        ),
-        column(4,
-               sliderInput("fig_width_kap", "Width (in):",
-                           min = 5, max = 20, value = 8
-               )
-        ),
-        column(4,
-               sliderInput("fig_height_kap", "Height (in):",
-                           min = 5, max = 20, value = 6
-               )
-        )
-      )
-    })
-    
-    output$downloadButton_kap <- downloadHandler(
-      filename =  function() {
-        paste(input$event_kap, "_", input$data_kap, "_", input$group_kap , "_plot.", input$kap_file_ext ,sep="")
-      },
-      # content is a function with argument file. content writes the plot to the device
-      content = function(file) {
-        withProgress(message = 'Download in progress',
-                     detail = 'This may take a while...', value = 0, {
-                       for (i in 1:15) {
-                         incProgress(1/15)
-                         Sys.sleep(0.01)
-                       }
+    )
+  })
+  
+  output$downloadButton_kap <- downloadHandler(
+    filename =  function() {
+      paste(input$event_kap, "_", input$data_kap, "_", input$group_kap , "_plot.", input$kap_file_ext ,sep="")
+    },
+    # content is a function with argument file. content writes the plot to the device
+    content = function(file) {
+      withProgress(message = 'Download in progress',
+                   detail = 'This may take a while...', value = 0, {
+                     for (i in 1:15) {
+                       incProgress(1/15)
+                       Sys.sleep(0.01)
+                     }
+                     
+                     if (input$kap_file_ext == "emf"){
+                       devEMF::emf(file, width = input$fig_width_kap, height =input$fig_height_kap, coordDPI = 300, emfPlus = F)
+                       plot(obj.km())
+                       dev.off()
                        
-                       if (input$kap_file_ext == "emf"){
-                         devEMF::emf(file, width = input$fig_width_kap, height =input$fig_height_kap, coordDPI = 300, emfPlus = F)
-                         plot(obj.km())
-                         dev.off()
-                         
-                       } else{
-                         ggsave(file, obj.km(), dpi = 300, units = "in", width = input$fig_width_kap, height =input$fig_height_kap)
-                       }
-                       
-                     })
-        
-        
-      })
+                     } else{
+                       ggsave(file, obj.km(), dpi = 300, units = "in", width = input$fig_width_kap, height =input$fig_height_kap)
+                     }
+                     
+                   })
+      
+      
+    })
+  
     
     
        
