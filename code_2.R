@@ -112,43 +112,6 @@ cciscore <- list(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 3, 6, 6)
 
 # 여기까지 cci
 
-#------------- PPI, H2RA windowperiod 2일로 설정한것 파일 불러오기-------
-
-nperiod0 <- fread("nperiod0.csv")
-nperiod30 <- fread("nperiod30.csv")
-nperiod60 <- fread("nperiod60.csv")
-nperiod90 <- fread("nperiod90.csv")
-nperiod180 <- fread("nperiod180.csv")
-
-nperiod0 <- nperiod0[, .(PERSON_ID, period.ppi = nperiod.ppi0, 
-                         start.ppi = ymd(periodstart.ppi0), 
-                         period.h2ra = nperiod.h2ra0, 
-                         start.h2ra = ymd(periodstart.h2ra0))]
-
-nperiod30 <- nperiod30[, .(PERSON_ID, period.ppi = nperiod.ppi30, 
-                           start.ppi = ymd(periodstart.ppi30), 
-                           period.h2ra = nperiod.h2ra30, 
-                           start.h2ra = ymd(periodstart.h2ra30))]
-
-nperiod60 <- nperiod60[, .(PERSON_ID, period.ppi = nperiod.ppi60, 
-                           start.ppi = ymd(periodstart.ppi60), 
-                           period.h2ra = nperiod.h2ra60, 
-                           start.h2ra = ymd(periodstart.h2ra60))]
-
-nperiod90 <- nperiod90[, .(PERSON_ID, period.ppi = nperiod.ppi90, 
-                           start.ppi = ymd(periodstart.ppi90), 
-                           period.h2ra = nperiod.h2ra90, 
-                           start.h2ra = ymd(periodstart.h2ra90))]
-
-nperiod180 <- nperiod180[, .(PERSON_ID, period.ppi = nperiod.ppi180, 
-                             start.ppi = ymd(periodstart.ppi180), 
-                             period.h2ra = nperiod.h2ra180, 
-                             start.h2ra = ymd(periodstart.h2ra180))]
-
-t14.mkcci <- merge(t12[, .(PERSON_ID, KEY_SEQ)],
-                   t14[SICK_SYM %in% unique(unlist(t14.cci))],
-                   by="KEY_SEQ")[, RECU_FR_DT := ymd(RECU_FR_DT)]
-
 
 # PPI 분석에 필요한거 + 과거력 분석에 필요한것 불러오기
 
@@ -180,6 +143,7 @@ dia.cerebralinfarction <- c("I63")
 dia.osteoporosis <- c("M810", "M815", "M818", "M819", "M800", "M805", "M808", "M809")
 #dia.ov1 <- c("M800", "M805", "M808", "M809")
 #dia.ov2 <- c("M810", "M815", "M818", "M819", "S220", "S221", "S320", "M484", "M485")
+dia.ovf <- c("M800", "M805", "M808", "M809", "M810", "M815", "M818", "M819", "S220", "S221", "S320", "M484", "M485")
 dia.ohf <- c("S720", "S721")
 dia.aki <- c("N17", "N170", "N171", "N172", "N178", "N179")
 
@@ -228,8 +192,9 @@ cer.d.l <- list(aspirin = code.aspirin, clopidogrel = code.clopidogrel,
 ost.d.l <- list(bisphosphonates = code.bisphosphonates,
                 serm = code.serm, calcitonin = code.calcitonin,
                 denosumab = code.denosumab, teriparatide = code.teriparatide)
-ov1.d.l <- NULL
-ov2.d.l <- NULL
+#ov1.d.l <- NULL
+#ov2.d.l <- NULL
+ovf.d.l <- NULL
 ohf.d.l <- NULL
 aki.d.l <- NULL
 
@@ -239,8 +204,9 @@ vas.p.l <- NULL
 dem.p.l <- NULL
 cer.p.l <- NULL
 ost.p.l <- NULL
-ov1.p.l <- c("N0471", "N0472", "N0473", "N0474", "N0630")
-ov2.p.l <- c("N0471", "N0472", "N0473", "N0474", "N0630")
+#ov1.p.l <- c("N0471", "N0472", "N0473", "N0474", "N0630")
+#ov2.p.l <- c("N0471", "N0472", "N0473", "N0474", "N0630")
+ovf.p.l <- c("N0471", "N0472", "N0473", "N0474", "N0630")
 ohf.p.l <- c("N0601", "N0911", "N0473", "N0981", "N0641", "N0652", "N0654", "N0715")
 aki.p.l <- NULL
 
@@ -260,6 +226,18 @@ jk <- jk[order(PERSON_ID, STND_Y)]
 t12[, RECU_FR_DT := ymd(RECU_FR_DT)]
 t12.firstcome <- t12[, .SD[1], by="PERSON_ID"][, .(PERSON_ID, start.come = RECU_FR_DT)]
 # 큰놈들 정리하기
+
+t14.sym <- t14[str_sub(SICK_SYM, 1, 3) %in% unique(unlist(t14.pre))]
+t14.sym <-
+  merge(t12[, .(PERSON_ID, KEY_SEQ)][KEY_SEQ %in% t14.sym$KEY_SEQ],t14.sym,by="KEY_SEQ")
+t16.sym <- t16[GNL_NM_CD %in% unique(unlist(t16.pre))]
+t16.sym <-
+  merge(t12[, .(PERSON_ID, KEY_SEQ)][KEY_SEQ %in% t16.sym$KEY_SEQ],t16.sym,by="KEY_SEQ")
+t14.sym[, RECU_FR_DT := ymd(RECU_FR_DT)]
+t16.sym[, RECU_FR_DT := ymd(RECU_FR_DT)]
+t14.mkcci <- merge(t12[, .(PERSON_ID, KEY_SEQ)],
+                   t14[SICK_SYM %in% unique(unlist(t14.cci))],
+                   by="KEY_SEQ")[, RECU_FR_DT := ymd(RECU_FR_DT)]
 
 
 #--------------- 만들었다가 버린 함수 --------------
@@ -341,12 +319,13 @@ WIS <- function(dia, d.l = NULL, p.l = NULL, nms){
 }
 
 
-HTA <- function(x, y, z){
+HTA <- function(x, y, z, tot){
   # x = 1 (PPI vs 나머지) 2 (H2RA vs 나머지)
   # y = 과거력을 index date y일 전부터 index date까지 검색함
   #     ppi(1) or h2ra(2) 첫 복용일 포함 복용전 y일을 확보하지 못할 경우 삭제
   # z = ppi(1) or h2ra(2) 첫 복용일 포함 z일 이전 질병 발병자들만 질병 발병자들로봄 (wash-out period)
-  TOT.temp <- TOT
+  # w = 자료 모두 들어있는 것
+  TOT.temp <- tot
   TOT.temp[, EXPCON := 3]
   TOT.temp[, indexdate := ymd(20000303)]
   # EXPCON = 1 (실험군) 2 (대조군) 3(버리는군)
@@ -370,6 +349,19 @@ HTA <- function(x, y, z){
   }
   
   ## 위암연구의 과거력과 모양 동일
+  vars.t14pre <- lapply(1:length(t14.pre), function(i){
+    person.ev <- merge(TOT.temp[, .(PERSON_ID, indexdate)], t14.sym[str_sub(SICK_SYM, 1, 3) %in% t14.pre[[i]]], by = "PERSON_ID")[order(PERSON_ID, RECU_FR_DT)][, .SD[1], keyby = "PERSON_ID"][RECU_FR_DT <= indexdate][, .(PERSON_ID, var = 1)]
+    vv <- merge(TOT.temp[, .(PERSON_ID)], person.ev, by = "PERSON_ID", all = T)[, var := ifelse(is.na(var), 0, 1)]$var
+    return(vv)
+  }) %>% Reduce(cbind, .)
+  colnames(vars.t14pre) <- paste0("Pre_", names(t14.pre))
+  
+  vars.t16pre <- lapply(1:length(t16.pre), function(i){
+    person.ev <- merge(TOT.temp[, .(PERSON_ID, indexdate)], t16.sym[GNL_NM_CD %in% t16.pre[[i]]], by = "PERSON_ID")[order(PERSON_ID, RECU_FR_DT)][, .SD[1], keyby = "PERSON_ID"][ymd(RECU_FR_DT) <= ymd(indexdate)][, .(PERSON_ID, var = 1)]
+    vv <- merge(TOT.temp[, .(PERSON_ID)], person.ev, by = "PERSON_ID", all = T)[, var := ifelse(is.na(var), 0, 1)]$var
+    return(vv)
+  }) %>% Reduce(cbind, .)
+  colnames(vars.t16pre) <- paste0("Pre_", names(t16.pre))
   
   vars.t14cci <- lapply(1:length(t14.cci), function(i){
     person.ev <- merge(TOT.temp[, .(PERSON_ID, indexdate)], t14.mkcci[SICK_SYM %in% t14.cci[[i]]], by = "PERSON_ID")[order(PERSON_ID, RECU_FR_DT)][, .SD[1], keyby = "PERSON_ID"][RECU_FR_DT <= indexdate][, .(PERSON_ID, var = cciscore[[i]])]
@@ -378,6 +370,8 @@ HTA <- function(x, y, z){
   }) %>% Reduce(cbind, .)
   colnames(vars.t14cci) <- names(t14.cci)
   
+  TOT.temp <- cbind(TOT.temp, vars.t14pre)
+  TOT.temp <- cbind(TOT.temp, vars.t16pre)
   TOT.temp <- cbind(TOT.temp, vars.t14cci)
   TOT.temp[, STND_Y := as.integer(str_sub(indexdate, 1, 4))]
   TOT.temp <- merge(TOT.temp,jk[PERSON_ID %in% TOT.temp$PERSON_ID],by=c("PERSON_ID","STND_Y"))
@@ -393,54 +387,208 @@ HTA <- function(x, y, z){
 # 질병 코드는 dia 에 약물코드는 d.l에 이름은 nms에
 # ex ) dementia 의 경우 dia.dementia, dem.d.l, "dementia" 로 저장
 
+# --------- Window Period를 위한 정리 -----
+
+t16ppi<-t16[GNL_NM_CD %in% code.ppi]
+t16h2ra<-t16[GNL_NM_CD %in% code.h2ra]
+
+t16ppi<-merge(t12[, .(KEY_SEQ, PERSON_ID)][KEY_SEQ %in% t16ppi$KEY_SEQ], t16ppi, by = "KEY_SEQ")
+t16h2ra<-
+  merge(t12[, .(KEY_SEQ, PERSON_ID)][KEY_SEQ %in% t16h2ra$KEY_SEQ], t16h2ra, by = "KEY_SEQ")
+
+#ppi 정리
+t16ppi[, RECU_FR_DT := ymd(RECU_FR_DT)]
+t16ppi <- t16ppi[order(PERSON_ID)]
+t16ppi[, periodstart.ppi := RECU_FR_DT]
+t16ppi <- t16ppi[order(PERSON_ID, RECU_FR_DT,MDCN_EXEC_FREQ)]
+
+#H2RA 정리
+t16h2ra[, RECU_FR_DT := ymd(RECU_FR_DT)]
+t16h2ra <- t16h2ra[order(PERSON_ID)]
+t16h2ra[, periodstart.h2ra := RECU_FR_DT]
+t16h2ra <- t16h2ra[order(PERSON_ID, RECU_FR_DT,MDCN_EXEC_FREQ)]
+
+# ---------Window Period 함수------------
+
+PPIWP <- function(x, y){
+  #x = Window period
+  #y = 0, 30, 60, 90, 120
+  
+  t16ppif <- t16ppi
+  t16ppif <- t16ppif[order(PERSON_ID, RECU_FR_DT, MDCN_EXEC_FREQ, KEY_SEQ, SEQ_NO)]
+  
+  t16ppif[, periodfinish.ppi := RECU_FR_DT + MDCN_EXEC_FREQ]
+  t16ppif$periodfinish.ppi <- c(as_date(1),t16ppif$periodfinish.ppi[-nrow(t16ppif)])
+  t16ppif$periodstart.ppi <- c(as_date(1),t16ppif$periodstart.ppi[-nrow(t16ppif)])
+  t16ppif[, jj := PERSON_ID]
+  t16ppif$jj <- c(1,t16ppif$PERSON_ID[-nrow(t16ppif)])
+  
+  t16ppif[, oo := 1]
+  t16ppif[jj==PERSON_ID][periodfinish.ppi + x >= RECU_FR_DT]$oo <- 0
+  t16ppif <- rbind(t16ppif,t16ppif)
+  t16ppif <- t16ppif[order(PERSON_ID, RECU_FR_DT, MDCN_EXEC_FREQ, KEY_SEQ, SEQ_NO)]
+  
+  t16ppif$jjj <- c(t16ppif$oo[-1],1)
+  t16ppif[, oo := oo * jjj]
+  
+  t16ppif <- cbind(t16ppif, num = c(1:nrow(t16ppif)))
+  t16ppif[, ooo := oo * num]
+  t16ppifo <- t16ppif[ooo == 0]
+  t16ppifo <- cbind(t16ppifo, numm = c(nrow(t16ppifo):1))
+  t16ppifo[, ooo := num + numm + nrow(t16ppif)]
+  t16ppif[ooo == 0]$ooo <- t16ppifo$ooo
+  
+  t16ppif <- t16ppif[order(RECU_FR_DT)]
+  t16ppif.fin <- t16ppif[, .SD[.N], by = c('PERSON_ID','ooo')]
+  t16ppif <- t16ppif[order(RECU_FR_DT + MDCN_EXEC_FREQ)]
+  t16ppif.ini <- t16ppif[, .SD[1], by = c('PERSON_ID','ooo')]
+  t16ppifpr <- merge(t16ppif.ini[, .(PERSON_ID, ooo, periodstart.ppi = RECU_FR_DT)], t16ppif.fin[, .(PERSON_ID, ooo, periodfinish.ppi = RECU_FR_DT + MDCN_EXEC_FREQ)], keyby=c("PERSON_ID, ooo"))
+  t16ppifpr <- t16ppifpr[, .(PERSON_ID, nperiod.ppi = periodfinish.ppi - periodstart.ppi, periodstart.ppi)]
+  t16ppifpr <- t16ppifpr[order(PERSON_ID, nperiod.ppi)]
+  t16ppifpr <- t16ppifpr[nperiod.ppi >= y]
+  t16ppifpr <- t16ppifpr[order(PERSON_ID, periodstart.ppi)]
+  
+  if(y==0){
+    t16ppifpr <- t16ppifpr[order(PERSON_ID, nperiod.ppi, -periodstart.ppi)]
+    t16ppifpr <- t16ppifpr[, .SD[.N], by="PERSON_ID"]
+  } else {
+    t16ppifpr <- t16ppifpr[, .SD[1], by="PERSON_ID"]
+  }
+  
+  return(t16ppifpr)
+}
+
+H2RAWP <- function(x, y){
+  #x = Window period
+  #y = 30, 60, 90, 120
+  
+  t16h2raf <- t16h2ra
+  t16h2raf <- t16h2raf[order(PERSON_ID, RECU_FR_DT, MDCN_EXEC_FREQ, KEY_SEQ, SEQ_NO)]
+  
+  t16h2raf[, periodfinish.h2ra := RECU_FR_DT + MDCN_EXEC_FREQ]
+  t16h2raf$periodfinish.h2ra <- c(as_date(1),t16h2raf$periodfinish.h2ra[-nrow(t16h2raf)])
+  t16h2raf$periodstart.h2ra <- c(as_date(1),t16h2raf$periodstart.h2ra[-nrow(t16h2raf)])
+  t16h2raf[, jj := PERSON_ID]
+  t16h2raf$jj <- c(1,t16h2raf$PERSON_ID[-nrow(t16h2raf)])
+  
+  t16h2raf[, oo := 1]
+  t16h2raf[jj==PERSON_ID][periodfinish.h2ra + x >= RECU_FR_DT]$oo <- 0
+  t16h2raf <- rbind(t16h2raf,t16h2raf)
+  t16h2raf <- t16h2raf[order(PERSON_ID, RECU_FR_DT, MDCN_EXEC_FREQ, KEY_SEQ, SEQ_NO)]
+  
+  t16h2raf$jjj <- c(t16h2raf$oo[-1],1)
+  t16h2raf[, oo := oo * jjj]
+  
+  t16h2raf <- cbind(t16h2raf, num = c(1:nrow(t16h2raf)))
+  t16h2raf[, ooo := oo * num]
+  t16h2rafo <- t16h2raf[ooo == 0]
+  t16h2rafo <- cbind(t16h2rafo, numm = c(nrow(t16h2rafo):1))
+  t16h2rafo[, ooo := num + numm + nrow(t16h2raf)]
+  t16h2raf[ooo == 0]$ooo <- t16h2rafo$ooo
+  
+  t16h2raf <- t16h2raf[order(RECU_FR_DT)]
+  t16h2raf.fin <- t16h2raf[, .SD[.N], by = c('PERSON_ID','ooo')]
+  t16h2raf <- t16h2raf[order(RECU_FR_DT + MDCN_EXEC_FREQ)]
+  t16h2raf.ini <- t16h2raf[, .SD[1], by = c('PERSON_ID','ooo')]
+  t16h2rafpr <- merge(t16h2raf.ini[, .(PERSON_ID, ooo, periodstart.h2ra = RECU_FR_DT)], t16h2raf.fin[, .(PERSON_ID, ooo, periodfinish.h2ra = RECU_FR_DT + MDCN_EXEC_FREQ)], keyby=c("PERSON_ID, ooo"))
+  t16h2rafpr <- t16h2rafpr[, .(PERSON_ID, nperiod.h2ra = periodfinish.h2ra - periodstart.h2ra, periodstart.h2ra)]
+  t16h2rafpr <- t16h2rafpr[order(PERSON_ID, nperiod.h2ra)]
+  t16h2rafpr <- t16h2rafpr[nperiod.h2ra >= y]
+  t16h2rafpr <- t16h2rafpr[order(PERSON_ID, periodstart.h2ra)]
+  
+  if(y==0){
+    t16h2rafpr <- t16h2rafpr[order(PERSON_ID, nperiod.h2ra, -periodstart.h2ra)]
+    t16h2rafpr <- t16h2rafpr[, .SD[.N], by="PERSON_ID"]
+  } else {
+    t16h2rafpr <- t16h2rafpr[, .SD[1], by="PERSON_ID"]
+  }
+  
+  
+  return(t16h2rafpr)
+}
+
+
 
 # ------ 골다공증만 따로 건드려주기 #* 부분에 포함될 것 -----
 
-out.dvc[!is.na(start.ov1)][!is.na(start.ohf)][start.ov1 < start.ohf]$start.ohf <- NA
-out.dvc[!is.na(start.ov1)][!is.na(start.ohf)][start.ov1 > start.ohf]$start.ov1 <- NA
-out.dvc[!is.na(start.ov2)][!is.na(start.ohf)][start.ov2 < start.ohf]$start.ohf <- NA
-out.dvc[!is.na(start.ov2)][!is.na(start.ohf)][start.ov2 > start.ohf]$start.ov2 <- NA
-out.dvc[, year.ost := substr(start.osteoporosis, 1, 4)]
-out.dvc[, year.ov1 := substr(start.ov1, 1, 4)]
-out.dvc[, year.ov2 := substr(start.ov2, 1, 4)]
-out.dvc[, year.ohf := substr(start.ohf, 1, 4)]
 
-out.dvc[, STND_Y := as.integer(year.ost)]
-out.dvc[PERSON_ID %in% merge(out.dvc, jk[, .(STND_Y, PERSON_ID, AGE_GROUP)][AGE_GROUP < 11], by=c('STND_Y', 'PERSON_ID'))$PERSON_ID]$start.osteoporosis <- NA
-out.dvc[, STND_Y := as.integer(year.ov1)]
-out.dvc[PERSON_ID %in% merge(out.dvc, jk[, .(STND_Y, PERSON_ID, AGE_GROUP)][AGE_GROUP < 11], by=c('STND_Y', 'PERSON_ID'))$PERSON_ID]$start.ov1 <- NA
-out.dvc[, STND_Y := as.integer(year.ov2)]
-out.dvc[PERSON_ID %in% merge(out.dvc, jk[, .(STND_Y, PERSON_ID, AGE_GROUP)][AGE_GROUP < 11], by=c('STND_Y', 'PERSON_ID'))$PERSON_ID]$start.ov2 <- NA
-out.dvc[, STND_Y := as.integer(year.ohf)]
-out.dvc[PERSON_ID %in% merge(out.dvc, jk[, .(STND_Y, PERSON_ID, AGE_GROUP)][AGE_GROUP < 11], by=c('STND_Y', 'PERSON_ID'))$PERSON_ID]$start.ohf <- NA
-out.dvc <- out.dvc[,-c(10, 11, 12, 13, 14)]
+#out.dvc[, year.ost := substr(start.osteoporosis, 1, 4)]
+#out.dvc[, year.ov1 := substr(start.ov1, 1, 4)]
+#out.dvc[, year.ov2 := substr(start.ov2, 1, 4)]
+#out.dvc[, year.ohf := substr(start.ohf, 1, 4)]
+
+#out.dvc[, STND_Y := as.integer(year.ost)]
+#out.dvc[PERSON_ID %in% merge(out.dvc, jk[, .(STND_Y, PERSON_ID, AGE_GROUP)][AGE_GROUP < 11], by=c('STND_Y', 'PERSON_ID'))$PERSON_ID]$start.osteoporosis <- NA
+#out.dvc[, STND_Y := as.integer(year.ov1)]
+#out.dvc[PERSON_ID %in% merge(out.dvc, jk[, .(STND_Y, PERSON_ID, AGE_GROUP)][AGE_GROUP < 11], by=c('STND_Y', 'PERSON_ID'))$PERSON_ID]$start.ov1 <- NA
+#out.dvc[, STND_Y := as.integer(year.ov2)]
+#out.dvc[PERSON_ID %in% merge(out.dvc, jk[, .(STND_Y, PERSON_ID, AGE_GROUP)][AGE_GROUP < 11], by=c('STND_Y', 'PERSON_ID'))$PERSON_ID]$start.ov2 <- NA
+#out.dvc[, STND_Y := as.integer(year.ohf)]
+#out.dvc[PERSON_ID %in% merge(out.dvc, jk[, .(STND_Y, PERSON_ID, AGE_GROUP)][AGE_GROUP < 11], by=c('STND_Y', 'PERSON_ID'))$PERSON_ID]$start.ohf <- NA
+#out.dvc <- out.dvc[,-c(10, 11, 12, 13, 14)]
 
 #------------ 통함수 ------------ 아직 오류나서 변수 대입해놓고 손으로 실행해야함 #
 
-ALLINONE <- function(x, y, z, w){
+ALLINONE <- function(x, y, z, w, p){
   
-  #x = c('dementia', 'vasculardementia', 'cerebralinfarction', 'osteoporosis', 'ov1', 'ov2', 'ohf')
+  if(length(y) < 2){
+    stop('length y should be more than 2')
+  }
+  if(0 %in% y){
+    
+  } else{
+    stop('y should include 0')
+  }
+  if(y[1] < 0){
+    stop('y should be positive')
+  }
+  
+  if(length(x) < 2) {
+    stop('length x should be more than 2')
+  }
+  
+  
+  y <- y[order(y)]
+  
+  #x = c('dementia', 'vasculardementia', 'cerebralinfarction', 'osteoporosis', 'ovf', 'ohf')
   #y = c(0, 30, 60, 90, 180)
-  #z = 365
-  #w = 180
+  #z = 365 첫 방문부터 며칠 후를 indexdate로 볼지
+  #w = 180 washout period
+  #p = 2 (window period)
 
       out.dvc <- eval(parse(text = paste0("WIS(dia.",x[1],",", substr(x[1], 1, 3), ".d.l,", substr(x[1], 1, 3), ".p.l,", "'",x[1], "')")))
-    for(n in 2:length(x)){
-      out.dvc <- merge(out.dvc, eval(parse(text = paste0("WIS(dia.",x[n],",", substr(x[n], 1, 3), ".d.l,", substr(x[n], 1, 3), ".p.l,", "'",x[n], "')"))),
-                       by = "PERSON_ID", all = T)
-    }
+
+      for(n in (2:length(x))){
+        out.dvc <- merge(out.dvc, eval(parse(text = paste0("WIS(dia.",x[n],",", substr(x[n], 1, 3), ".d.l,", substr(x[n], 1, 3), ".p.l,", "'",x[n], "')"))),
+                         by = "PERSON_ID", all = T)
+      }
+      
+      
+#    lapply(2:length(x), function(n){
+#      out.dvc <- merge(out.dvc, eval(parse(text = paste0("WIS(dia.",x[n],",", substr(x[n], 1, 3), ".d.l,", substr(x[n], 1, 3), ".p.l,", "'",x[n], "')"))),
+#                       by = "PERSON_ID", all = T)
+#    })
     out.dvc <- merge(out.dvc, t12.firstcome, by = "PERSON_ID", all = T)
 
     #*
-    
+    if('ovf' %in% x && 'ohf' %in% x){
+      out.dvc[!is.na(start.ovf)][!is.na(start.ohf)][start.ovf < start.ohf]$start.ohf <- NA
+      out.dvc[!is.na(start.ovf)][!is.na(start.ohf)][start.ovf > start.ohf]$start.ovf <- NA
+    }
+        
 for(i in y) {
-  nperiod <- eval(parse(text = paste0("nperiod",i)))
+  nperiod <- merge(PPIWP(p, i), H2RAWP(p, i), all=T, keyby="PERSON_ID")
+  colnames(nperiod) <- c("PERSON_ID", "nperiod.ppi", "periodstart.ppi", "nperiod.h2ra", "periodstart.h2ra")
+  nperiod <- nperiod[, .(PERSON_ID, period.ppi = nperiod.ppi, 
+                         start.ppi = ymd(periodstart.ppi), 
+                         period.h2ra = nperiod.h2ra, 
+                         start.h2ra = ymd(periodstart.h2ra))]
   TOT <- out.dvc
   TOT <- merge(nperiod, TOT, by = "PERSON_ID")
   TOT[is.na(period.ppi)]$period.ppi <- 0
-  TOT[is.na(period.h2ra)]$period.h2ra <- 0
-  PPI <- HTA(1, z, w)
-  H2RA <- HTA(2, z, w)
+TOT[is.na(period.h2ra)]$period.h2ra <- 0
+  PPI <- HTA(1, z, w, TOT)
+  H2RA <- HTA(2, z, w, TOT)
   for(j in x){
     eval(parse(text = paste0("PPI[, day.", j, ":= ymd(start.", j, ")- ymd(start.come)]")))
     eval(parse(text = paste0("PPI[, day.", j, "CON",
@@ -461,98 +609,70 @@ for(i in y) {
   
   
   }
+    
+list.1 <- lapply(2:length(y), function(k){
+  eval(parse(text = paste0(
+    "vv <-rbind(PPI", y[k],"[period.ppi >=", y[k], "], PPI", y[1], "[period.ppi == ", y[1], "])"
+    )))
+  eval(parse(text = paste0(
+    "vv[period.ppi >= ", y[k], "]$EXPCON <- 1"
+  )))
+  eval(parse(text = paste0(
+    "vv[period.ppi == ", y[1], "]$EXPCON <- 2"
+  )))
+  return(vv)
+    
+})
 
-    # PPI 30 vs PPI never use
-    
-    PPI.2.PPI.0 <- rbind(PPI30[period.ppi >= 30],PPI0[period.ppi == 0])
-    PPI.2.PPI.0[period.ppi >= 30]$EXPCON <- 1
-    PPI.2.PPI.0[period.ppi == 0]$EXPCON <- 2
-    fwrite(PPI.2.PPI.0, "PPI_2_PPI_0.csv")
-    
-    # PPI 30 vs PPI < 30
-    
-    PPI.2.PPI.1 <- rbind(PPI30[period.ppi >= 30],PPI0[period.ppi < 30])
-    PPI.2.PPI.1[period.ppi >= 30]$EXPCON <- 1
-    PPI.2.PPI.1[period.ppi < 30]$EXPCON <- 2
-    fwrite(PPI.2.PPI.1, "PPI_2_PPI_1.csv")
-    
-    # PPI 30 vs H2RA 30
-    
-    PPI.2.H2RA.2 <- rbind(PPI30[PERSON_ID %in% H2RA0[period.h2ra==0]$PERSON_ID], H2RA30[PERSON_ID %in% PPI0[period.ppi==0]$PERSON_ID])
-    PPI.2.H2RA.2[period.h2ra == 0]$EXPCON <- 1
-    PPI.2.H2RA.2[period.ppi == 0]$EXPCON <- 2
-    fwrite(PPI.2.H2RA.2, "PPI_2_H2RA_2.csv")
-    
-    # PPI 60 vs PPI never use
-    
-    PPI.3.PPI.0 <- rbind(PPI60[period.ppi >= 60],PPI0[period.ppi == 0])
-    PPI.3.PPI.0[period.ppi >= 60]$EXPCON <- 1
-    PPI.3.PPI.0[period.ppi == 0]$EXPCON <- 2
-    fwrite(PPI.3.PPI.0, "PPI_3_PPI_0.csv")
-    
-    # PPI 60 vs PPI < 30
-    
-    PPI.3.PPI.1 <- rbind(PPI60[period.ppi >= 60],PPI0[period.ppi < 30])
-    PPI.3.PPI.1[period.ppi >= 60]$EXPCON <- 1
-    PPI.3.PPI.1[period.ppi < 30]$EXPCON <- 2
-    fwrite(PPI.3.PPI.1, "PPI_3_PPI_1.csv")
-    
-    # PPI 60 vs H2RA 60
-    
-    PPI.3.H2RA.3 <- rbind(PPI60[PERSON_ID %in% H2RA0[period.h2ra==0]$PERSON_ID], H2RA60[PERSON_ID %in% PPI0[period.ppi==0]$PERSON_ID])
-    PPI.3.H2RA.3[period.h2ra == 0]$EXPCON <- 1
-    PPI.3.H2RA.3[period.ppi == 0]$EXPCON <- 2
-    fwrite(PPI.3.H2RA.3, "PPI_3_H2RA_3.csv")
-    
-    # PPI 90 vs PPI never use
-    
-    PPI.4.PPI.0 <- rbind(PPI90[period.ppi >= 90],PPI0[period.ppi == 0])
-    PPI.4.PPI.0[period.ppi >= 90]$EXPCON <- 1
-    PPI.4.PPI.0[period.ppi == 0]$EXPCON <- 2
-    fwrite(PPI.4.PPI.0, "PPI_4_PPI_0.csv")
-    
-    # PPI 90 vs PPI < 30
-    
-    PPI.4.PPI.1 <- rbind(PPI90[period.ppi >= 90],PPI0[period.ppi < 30])
-    PPI.4.PPI.1[period.ppi >= 90]$EXPCON <- 1
-    PPI.4.PPI.1[period.ppi < 30]$EXPCON <- 2
-    fwrite(PPI.4.PPI.1, "PPI_4_PPI_1.csv")
-    
-    # PPI 90 vs H2RA 90
-    
-    PPI.4.H2RA.4 <- rbind(PPI90[PERSON_ID %in% H2RA0[period.h2ra==0]$PERSON_ID], H2RA90[PERSON_ID %in% PPI0[period.ppi==0]$PERSON_ID])
-    PPI.4.H2RA.4[period.h2ra == 0]$EXPCON <- 1
-    PPI.4.H2RA.4[period.ppi == 0]$EXPCON <- 2
-    fwrite(PPI.4.H2RA.4, "PPI_4_H2RA_4.csv")
-    
-    # PPI 180 vs PPI never use
-    
-    PPI.5.PPI.0 <- rbind(PPI180[period.ppi >= 180],PPI0[period.ppi == 0])
-    PPI.5.PPI.0[period.ppi >= 180]$EXPCON <- 1
-    PPI.5.PPI.0[period.ppi == 0]$EXPCON <- 2
-    fwrite(PPI.5.PPI.0, "PPI_5_PPI_0.csv")
-    
-    # PPI 180 vs PPI < 30
-    
-    PPI.5.PPI.1 <- rbind(PPI180[period.ppi >= 180],PPI0[period.ppi < 30])
-    PPI.5.PPI.1[period.ppi >= 180]$EXPCON <- 1
-    PPI.5.PPI.1[period.ppi < 30]$EXPCON <- 2
-    fwrite(PPI.5.PPI.1, "PPI_5_PPI_1.csv")
-    
-    # PPI 180 vs H2RA 180
-    
-    PPI.5.H2RA.5 <- rbind(PPI180[PERSON_ID %in% H2RA0[period.h2ra==0]$PERSON_ID], H2RA180[PERSON_ID %in% PPI0[period.ppi==0]$PERSON_ID])
-    PPI.5.H2RA.5[period.h2ra == 0]$EXPCON <- 1
-    PPI.5.H2RA.5[period.ppi == 0]$EXPCON <- 2
-    fwrite(PPI.5.H2RA.5, "PPI_5_H2RA_5.csv")
-    
-    
-    
+list.2 <- lapply(2:length(y), function(k){
+  eval(parse(text = paste0(
+    "vv <- rbind(PPI", y[k], "[period.ppi >= ", y[k], "], PPI0[period.ppi <", y[2], "])"
+  )))
+  eval(parse(text = paste0(
+    "vv[period.ppi >=", y[k], "]$EXPCON <- 1" 
+  )))
+  eval(parse(text = paste0(
+    "vv[period.ppi <", y[2], "]$EXPCON <- 2" 
+  )))
+  return(vv)
+  
+})
+
+list.3 <- lapply(2:length(y), function(k){
+  
+  eval(parse(text = paste0(
+    "vv <- rbind(PPI", y[k], "[PERSON_ID %in% H2RA0[period.h2ra == 0]$PERSON_ID], H2RA", y[k],"[PERSON_ID %in% PPI0[period.ppi == 0]$PERSON_ID])"
+  )))
+
+  vv[period.h2ra == 0]$EXPCON <- 1
+  vv[period.ppi == 0]$EXPCON <- 2
+  
+  return(vv)
+
+  
+})
+
+
+out.list <- list("PPIneveruse" = list.1, "PPI<30" = list.2, "H2RA" = list.3)
+
+return(out.list)
+
 }
 
 
 
-
+ #fwrite(l[[1]][1], "/home/whe/period30/ppi_2_ppi_0.csv")
+ #fwrite(l[[1]][2], "/home/whe/period30/ppi_3_ppi_0.csv")
+ #fwrite(l[[1]][3], "/home/whe/period30/ppi_4_ppi_0.csv")
+ #fwrite(l[[1]][4], "/home/whe/period30/ppi_5_ppi_0.csv")
+ #fwrite(l[[2]][1], "/home/whe/period30/ppi_2_ppi_1.csv")
+ #fwrite(l[[2]][2], "/home/whe/period30/ppi_3_ppi_1.csv")
+ #fwrite(l[[2]][3], "/home/whe/period30/ppi_4_ppi_1.csv")
+ #fwrite(l[[2]][4], "/home/whe/period30/ppi_5_ppi_1.csv")
+ #fwrite(l[[3]][1], "/home/whe/period30/ppi_2_h2ra_2.csv")
+ #fwrite(l[[3]][2], "/home/whe/period30/ppi_3_h2ra_3.csv")
+ #fwrite(l[[3]][3], "/home/whe/period30/ppi_4_h2ra_4.csv")
+ #fwrite(l[[3]][4], "/home/whe/period30/ppi_5_h2ra_5.csv")
 
 
 
