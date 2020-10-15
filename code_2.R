@@ -509,7 +509,7 @@ H2RAWP <- function(x, y){
 
 
 
-# ------ 골다공증만 따로 건드려주기 #* 부분에 포함될 것 -----
+# ------ 골다공증만 따로 건드려주기 #* 부분에 포함될 것 (필요없음 삭제)-----
 
 
 #out.dvc[, year.ost := substr(start.osteoporosis, 1, 4)]
@@ -527,7 +527,7 @@ H2RAWP <- function(x, y){
 #out.dvc[PERSON_ID %in% merge(out.dvc, jk[, .(STND_Y, PERSON_ID, AGE_GROUP)][AGE_GROUP < 11], by=c('STND_Y', 'PERSON_ID'))$PERSON_ID]$start.ohf <- NA
 #out.dvc <- out.dvc[,-c(10, 11, 12, 13, 14)]
 
-#------------ 통함수 ------------ 아직 오류나서 변수 대입해놓고 손으로 실행해야함 #
+#------------ 통함수 ------------ #
 
 ALLINONE <- function(x, y, z, w, p){
   
