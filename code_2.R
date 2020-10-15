@@ -661,20 +661,6 @@ return(out.list)
 
 
 
- #fwrite(l[[1]][1], "/home/whe/period30/ppi_2_ppi_0.csv")
- #fwrite(l[[1]][2], "/home/whe/period30/ppi_3_ppi_0.csv")
- #fwrite(l[[1]][3], "/home/whe/period30/ppi_4_ppi_0.csv")
- #fwrite(l[[1]][4], "/home/whe/period30/ppi_5_ppi_0.csv")
- #fwrite(l[[2]][1], "/home/whe/period30/ppi_2_ppi_1.csv")
- #fwrite(l[[2]][2], "/home/whe/period30/ppi_3_ppi_1.csv")
- #fwrite(l[[2]][3], "/home/whe/period30/ppi_4_ppi_1.csv")
- #fwrite(l[[2]][4], "/home/whe/period30/ppi_5_ppi_1.csv")
- #fwrite(l[[3]][1], "/home/whe/period30/ppi_2_h2ra_2.csv")
- #fwrite(l[[3]][2], "/home/whe/period30/ppi_3_h2ra_3.csv")
- #fwrite(l[[3]][3], "/home/whe/period30/ppi_4_h2ra_4.csv")
- #fwrite(l[[3]][4], "/home/whe/period30/ppi_5_h2ra_5.csv")
-
-
 
 
 
