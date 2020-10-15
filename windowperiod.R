@@ -44,7 +44,7 @@ t16h2ra[, periodstart.h2ra := RECU_FR_DT]
 t16h2ra <- t16h2ra[order(PERSON_ID, RECU_FR_DT,MDCN_EXEC_FREQ)]
 
 
-
+ 
 PPIWP <- function(x, y){
   #x = Window period
   #y = 0, 30, 60, 90, 120
