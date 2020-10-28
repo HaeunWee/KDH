@@ -728,7 +728,7 @@ return(out.list)
 }
 
 
-# l <- ALLINONE(c('dementia','vasculardementia','cerebralinfarction', 'osteoporosis', 'ovf', 'ohf'), c(0, 30, 60, 90, 180), 365, 180, 30)
+# ll <- ALLINONE(c('dementia','vasculardementia','cerebralinfarction', 'osteoporosis', 'ovf', 'ohf'), c(0, 30, 60, 90, 180), 365, 180, 30)
 
 # fwrite(df(as.data.table(ll[[1]][1])), "/home/whe/period30/1027/ppi_2_ppi_0.csv")
 # fwrite(df(as.data.table(ll[[1]][2])), "/home/whe/period30/1027/ppi_3_ppi_0.csv")
@@ -764,11 +764,16 @@ df <- function(x){
 }
 rm(kk)
 
+#l <- ALLINONE(c('dementia','vasculardementia','cerebralinfarction', 'osteoporosis', 'ovf', 'ohf'), c(0, 365, 730, 1095, 1460, 1825), 365, 180, 30)
+
+
 #ppi365ppi0 <- as.data.table(l[[1]][[1]])
 #ppi730ppi0 <- as.data.table(l[[1]][[2]])
 #ppi1095ppi0 <- as.data.table(l[[1]][[3]])
 #ppi1460ppi0 <- as.data.table(l[[1]][[4]])
 #ppi1825ppi0 <- as.data.table(l[[1]][[5]])
+
+
 
 #fwrite(df(ppi365ppi0), "/home/whe/osteo/3650.csv")
 #fwrite(df(ppi730ppi0), "/home/whe/osteo/7300.csv")
@@ -776,4 +781,16 @@ rm(kk)
 #fwrite(df(ppi1460ppi0), "/home/whe/osteo/14600.csv")
 #fwrite(df(ppi1825ppi0), "/home/whe/osteo/18250.csv")
 
+#ppi90 <- fread('/home/whe/period30/1027/ppi_4_ppi_0.csv')
 
+#ppi0 <- fread('/home/whe/period30/1027/ppi_2_ppi_1.csv')
+
+#ppi730 <- fread('/home/whe/osteo/7300.csv')
+#ppi1825 <- fread('/home/whe/osteo/18250.csv')
+#ppi1460 <- fread('/home/whe/osteo/14600.csv')
+#ppi1095 <- fread('/home/whe/osteo/10950.csv')
+#ppi365 <- fread('/home/whe/osteo/3650.csv')
+#ppi0 <- rbind(ppifast[PERSON_ID %in% ppimax[period.ppi <= 90]$PERSON_ID][period.ppi > 0], ppi365[period.ppi == 0])
+# ppi(1, 30) 한거 가져다 두어야함
+# 0 vs 1~90 <- 이때 indexdate를 1일 이상일때 가장 빠른 ppi 섭취로 두었기 때문에 n수가 조금 줄어듦.
+#ppi90 <- rbind(ppi90[PERSON_ID %in% ppimax[period.ppi <= 365]$PERSON_ID][period.ppi > 0][, -c('period.h2ra', 'start.h2ra')], ppi365[period.ppi == 0])
