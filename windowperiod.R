@@ -43,8 +43,15 @@ t16h2ra <- t16h2ra[order(PERSON_ID)]
 t16h2ra[, periodstart.h2ra := RECU_FR_DT]
 t16h2ra <- t16h2ra[order(PERSON_ID, RECU_FR_DT,MDCN_EXEC_FREQ)]
 
+#날짜합집합함수
+dunion <- function(...){
+  args <- list(...)
+  
 
- 
+}
+
+
+
 PPIWP <- function(x, y){
   #x = Window period
   #y = 0, 30, 60, 90, 120
@@ -59,6 +66,8 @@ PPIWP <- function(x, y){
   t16ppif$jj <- c(1,t16ppif$PERSON_ID[-nrow(t16ppif)])
   
   t16ppif[, oo := 1]
+  t16ppif[, do := RECU_FR_DT -periodfinish.ppi]
+  t16ppif[do < 0]$do <- 0
   t16ppif[jj==PERSON_ID][periodfinish.ppi + x >= RECU_FR_DT]$oo <- 0
   t16ppif <- rbind(t16ppif,t16ppif)
   t16ppif <- t16ppif[order(PERSON_ID, RECU_FR_DT, MDCN_EXEC_FREQ, KEY_SEQ, SEQ_NO)]
@@ -73,12 +82,20 @@ PPIWP <- function(x, y){
   t16ppifo[, ooo := num + numm + nrow(t16ppif)]
   t16ppif[ooo == 0]$ooo <- t16ppifo$ooo
   
+  t16ppif.day <- t16ppif[order(oo)][, .SD[1], by=c("PERSON_ID", "RECU_FR_DT", "MDCN_EXEC_FREQ", "KEY_SEQ", "SEQ_NO", "ooo")]
+  t16ppif.day[oo == 1]$do <- 0
+  t16ppif.day <- t16ppif.day[order(num)]
+  t16ppif.day[, dsum.ppi := sum(do) - do[1], keyby=c("PERSON_ID", "ooo")]
+  
   t16ppif <- t16ppif[order(RECU_FR_DT)]
   t16ppif.fin <- t16ppif[, .SD[.N], by = c('PERSON_ID','ooo')]
   t16ppif <- t16ppif[order(RECU_FR_DT + MDCN_EXEC_FREQ)]
   t16ppif.ini <- t16ppif[, .SD[1], by = c('PERSON_ID','ooo')]
   t16ppifpr <- merge(t16ppif.ini[, .(PERSON_ID, ooo, periodstart.ppi = RECU_FR_DT)], t16ppif.fin[, .(PERSON_ID, ooo, periodfinish.ppi = RECU_FR_DT + MDCN_EXEC_FREQ)], keyby=c("PERSON_ID, ooo"))
-  t16ppifpr <- t16ppifpr[, .(PERSON_ID, nperiod.ppi = periodfinish.ppi - periodstart.ppi, periodstart.ppi)]
+  t16ppifpr <- merge(t16ppifpr, t16ppif.day[, .(PERSON_ID, dsum.ppi, ooo)], keyby=c("PERSON_ID, ooo"))
+
+
+  t16ppifpr <- t16ppifpr[, .(PERSON_ID, nperiod.ppi = periodfinish.ppi - periodstart.ppi - dsum.ppi, periodstart.ppi)]
   t16ppifpr <- t16ppifpr[order(PERSON_ID, nperiod.ppi)]
   t16ppifpr <- t16ppifpr[nperiod.ppi >= y]
   t16ppifpr <- t16ppifpr[order(PERSON_ID, periodstart.ppi)]
@@ -107,6 +124,8 @@ H2RAWP <- function(x, y){
   t16h2raf$jj <- c(1,t16h2raf$PERSON_ID[-nrow(t16h2raf)])
   
   t16h2raf[, oo := 1]
+  t16h2raf[, do := RECU_FR_DT -periodfinish.h2ra]
+  t16h2raf[do < 0]$do <- 0
   t16h2raf[jj==PERSON_ID][periodfinish.h2ra + x >= RECU_FR_DT]$oo <- 0
   t16h2raf <- rbind(t16h2raf,t16h2raf)
   t16h2raf <- t16h2raf[order(PERSON_ID, RECU_FR_DT, MDCN_EXEC_FREQ, KEY_SEQ, SEQ_NO)]
@@ -121,23 +140,30 @@ H2RAWP <- function(x, y){
   t16h2rafo[, ooo := num + numm + nrow(t16h2raf)]
   t16h2raf[ooo == 0]$ooo <- t16h2rafo$ooo
   
+  t16h2raf.day <- t16h2raf[order(oo)][, .SD[1], by=c("PERSON_ID", "RECU_FR_DT", "MDCN_EXEC_FREQ", "KEY_SEQ", "SEQ_NO", "ooo")]
+  t16h2raf.day[oo == 1]$do <- 0
+  t16h2raf.day <- t16h2raf.day[order(num)]
+  t16h2raf.day[, dsum.h2ra := sum(do) - do[1], keyby=c("PERSON_ID", "ooo")]
+  
   t16h2raf <- t16h2raf[order(RECU_FR_DT)]
   t16h2raf.fin <- t16h2raf[, .SD[.N], by = c('PERSON_ID','ooo')]
   t16h2raf <- t16h2raf[order(RECU_FR_DT + MDCN_EXEC_FREQ)]
   t16h2raf.ini <- t16h2raf[, .SD[1], by = c('PERSON_ID','ooo')]
   t16h2rafpr <- merge(t16h2raf.ini[, .(PERSON_ID, ooo, periodstart.h2ra = RECU_FR_DT)], t16h2raf.fin[, .(PERSON_ID, ooo, periodfinish.h2ra = RECU_FR_DT + MDCN_EXEC_FREQ)], keyby=c("PERSON_ID, ooo"))
-  t16h2rafpr <- t16h2rafpr[, .(PERSON_ID, nperiod.h2ra = periodfinish.h2ra - periodstart.h2ra, periodstart.h2ra)]
+  t16h2rafpr <- merge(t16h2rafpr, t16h2raf.day[, .(PERSON_ID, dsum.h2ra, ooo)], keyby=c("PERSON_ID, ooo"))
+  
+  
+  t16h2rafpr <- t16h2rafpr[, .(PERSON_ID, nperiod.h2ra = periodfinish.h2ra - periodstart.h2ra - dsum.h2ra, periodstart.h2ra)]
   t16h2rafpr <- t16h2rafpr[order(PERSON_ID, nperiod.h2ra)]
   t16h2rafpr <- t16h2rafpr[nperiod.h2ra >= y]
   t16h2rafpr <- t16h2rafpr[order(PERSON_ID, periodstart.h2ra)]
-
+  
   if(y==0){
     t16h2rafpr <- t16h2rafpr[order(PERSON_ID, nperiod.h2ra, -periodstart.h2ra)]
     t16h2rafpr <- t16h2rafpr[, .SD[.N], by="PERSON_ID"]
   } else {
     t16h2rafpr <- t16h2rafpr[, .SD[1], by="PERSON_ID"]
   }
-  
   
   return(t16h2rafpr)
 }
@@ -168,11 +194,11 @@ colnames(nperiod90) <- c("PERSON_ID", "nperiod.ppi90", "periodstart.ppi90", "npe
 nperiod180 <- merge(t16ppipr180, t16h2rapr180, all=T, keyby="PERSON_ID")
 colnames(nperiod180) <- c("PERSON_ID", "nperiod.ppi180", "periodstart.ppi180", "nperiod.h2ra180", "periodstart.h2ra180")
 
-fwrite(nperiod0, "nperiod0.csv")
-fwrite(nperiod30, "nperiod30.csv")
-fwrite(nperiod60, "nperiod60.csv")
-fwrite(nperiod90, "nperiod90.csv")
-fwrite(nperiod180, "nperiod180.csv")
+#fwrite(nperiod0, "nperiod0.csv")
+#fwrite(nperiod30, "nperiod30.csv")
+#fwrite(nperiod60, "nperiod60.csv")
+#fwrite(nperiod90, "nperiod90.csv")
+#fwrite(nperiod180, "nperiod180.csv")
 
 #PPI <- merge(PPI, t16ppipr, keyby="PERSON_ID")
 #PPI$nperiod.ppi[is.na(PPI$nperiod.ppi)] <- 0
